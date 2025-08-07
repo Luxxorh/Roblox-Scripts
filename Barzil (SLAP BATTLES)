@@ -20,7 +20,7 @@ local window = Rayfield:CreateWindow({
 })
 
 local fanTab = window:CreateTab("Fan")
-local badgeSection = fanTab:CreateSection("Badge")
+local badgeSectionFan = fanTab:CreateSection("Badge")
 
 fanTab:CreateButton({
     Name = "Auto Get Fan",
@@ -38,5 +38,22 @@ fanTab:CreateButton({
         wait(0.1)
         Events.KeyBadgeReward:FireServer()
     end,
-    SectionParent = badgeSection
+    SectionParent = badgeSectionFan
+})
+
+local boxerTab = window:CreateTab("Boxer")
+local badgeSectionBoxer = boxerTab:CreateSection("Badge")
+
+boxerTab:CreateButton({
+    Name = "Instant Get Boxer",
+    Callback = function()
+        local gloves = workspace:FindFirstChild("BoxingGloves")
+        if gloves then
+            local clickDetector = gloves:FindFirstChildOfClass("ClickDetector")
+            if clickDetector then
+                fireclickdetector(clickDetector)
+            end
+        end
+    end,
+    SectionParent = badgeSectionBoxer
 })
