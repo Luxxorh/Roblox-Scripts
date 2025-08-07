@@ -280,13 +280,13 @@ hitmanTab:CreateButton({
         end
 
         if character:FindFirstChild("Extended") then
-    local glovePrompt = glovePart and glovePart:FindFirstChildOfClass("ProximityPrompt")
-    if glovePrompt then
-        glovePrompt:InputHoldBegin()
-        task.wait(0.5)
-        glovePrompt:InputHoldEnd()
-    end
-end
+            local glovePrompt = glovePart and glovePart:FindFirstChildOfClass("ProximityPrompt")
+            if glovePrompt then
+                glovePrompt.MaxActivationDistance = math.huge
+                glovePrompt:InputHoldBegin()
+                glovePrompt:InputHoldEnd()
+            end
+        end
 
         task.wait(4)
 
@@ -298,23 +298,23 @@ end
         task.wait(1)
 
         spawn(function()
-            while true do
-                local chestFolder = Workspace:FindFirstChild("TreasureChestFolder")
-                local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
-                if chestPart then
-                    task.wait(1)
-                    local chestModel = chestPart:FindFirstChild("TreasureChest")
-                    local chestPrompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
-                    if chestPrompt then
-                        chestPrompt:InputHoldBegin()
-                        task.wait(0.5)
-                        chestPrompt:InputHoldEnd()
-                    end
-                    break
-                else
-                    VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                end
+    VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+
+    while true do
+        local chestFolder = Workspace:FindFirstChild("TreasureChestFolder")
+        local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
+        if chestPart then
+            local chestModel = chestPart:FindFirstChild("TreasureChest")
+            local chestPrompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
+            if chestPrompt then
+                chestPrompt.MaxActivationDistance = math.huge
+                chestPrompt:InputHoldBegin()
+                chestPrompt:InputHoldEnd()
             end
-        end)
+            break
+        else
+            task.wait(5)
+            VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+        end
     end
-})
+end)
