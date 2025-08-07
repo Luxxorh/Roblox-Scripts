@@ -176,3 +176,26 @@ hitmanTab:CreateButton({
         end
     end
 })
+
+hitmanTab:CreateButton({
+    Name = "Instant Grab All Easter Eggs",
+    SectionParent = easterEggSection,
+    Callback = function()
+        local player = game:GetService("Players").LocalPlayer
+        local character = player.Character
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        local eggFolder = workspace:FindFirstChild("EasterHuntEggs")
+
+        if eggFolder and rootPart then
+            for _, part in ipairs(eggFolder:GetChildren()) do
+                if part:IsA("MeshPart") then
+                    local touchTransmitter = part:FindFirstChildOfClass("TouchTransmitter")
+                    if touchTransmitter then
+                        firetouchinterest(rootPart, part, 0)
+                        firetouchinterest(rootPart, part, 1)
+                    end
+                end
+            end
+        end
+    end
+})
