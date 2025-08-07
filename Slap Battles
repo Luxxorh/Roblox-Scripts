@@ -294,7 +294,7 @@ hitmanTab:CreateButton({
                     break
                 else
                     VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(3.5)
+                    task.wait(4)
                 end
             end
         end)
