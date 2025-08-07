@@ -23,17 +23,12 @@ local lobbyTab = window:CreateTab("Lobby")
 local gameModesSection = lobbyTab:CreateSection("Game-Modes")
 
 lobbyTab:CreateButton({
-    Name = "Teleport To Killstreak Only Mode",
+    Name = "Teleport To Killstreak Only Server",
     SectionParent = gameModesSection,
     Callback = function()
-        local lobbyModel = workspace:FindFirstChild("Lobby")
-        local teleportPart = lobbyModel:FindFirstChild("Teleport6")
-        local touchTransmitter = teleportPart:FindFirstChildOfClass("TouchTransmitter")
-        local character = game:GetService("Players").LocalPlayer.Character
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        firetouchinterest(rootPart, teleportPart, 0)
-        wait()
-        firetouchinterest(rootPart, teleportPart, 1)
+        local TeleportService = game:GetService("TeleportService")
+        local player = game:GetService("Players").LocalPlayer
+        TeleportService:Teleport(11520107397, player)
     end
 })
 
@@ -41,14 +36,9 @@ lobbyTab:CreateButton({
     Name = "Teleport To Slap Royale",
     SectionParent = gameModesSection,
     Callback = function()
-        local lobbyModel = workspace:FindFirstChild("Lobby")
-        local teleportPart = lobbyModel:FindFirstChild("Teleport4")
-        local touchTransmitter = teleportPart:FindFirstChildOfClass("TouchTransmitter")
-        local character = game:GetService("Players").LocalPlayer.Character
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        firetouchinterest(rootPart, teleportPart, 0)
-        wait()
-        firetouchinterest(rootPart, teleportPart, 1)
+        local TeleportService = game:GetService("TeleportService")
+        local player = game:GetService("Players").LocalPlayer
+        TeleportService:Teleport(9431156611, player)
     end
 })
 
@@ -56,14 +46,9 @@ lobbyTab:CreateButton({
     Name = "Teleport To No Oneshot Gloves Server",
     SectionParent = gameModesSection,
     Callback = function()
-        local lobbyModel = workspace:FindFirstChild("Lobby")
-        local teleportPart = lobbyModel:FindFirstChild("Teleport3")
-        local touchTransmitter = teleportPart:FindFirstChildOfClass("TouchTransmitter")
-        local character = game:GetService("Players").LocalPlayer.Character
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        firetouchinterest(rootPart, teleportPart, 0)
-        wait()
-        firetouchinterest(rootPart, teleportPart, 1)
+        local TeleportService = game:GetService("TeleportService")
+        local player = game:GetService("Players").LocalPlayer
+        TeleportService:Teleport(9015014224, player)
     end
 })
 
