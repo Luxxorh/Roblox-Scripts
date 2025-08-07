@@ -256,7 +256,7 @@ hitmanTab:CreateButton({
         local gloveModel = cannonIsland:FindFirstChild("GlovelHoleInTheWall")
         if not gloveModel then return end
 
-        local glovePart = gloveModel:FindFirstChild("GlovelHoleInTheWall")
+        local glovePart = gloveModel:FindFirstChild("GlovePart")
         if not glovePart then return end
 
         local lobby = Workspace:FindFirstChild("Lobby")
@@ -283,7 +283,7 @@ hitmanTab:CreateButton({
         end
 
         if character:FindFirstChild("Extended") then
-            local glovePrompt = glovePart:FindFirstChildOfClass("ProximityPrompt")
+            local glovePrompt = gloveModel:FindFirstChildOfClass("ProximityPrompt")
             if glovePrompt then
                 glovePrompt.MaxActivationDistance = math.huge
                 glovePrompt:InputHoldBegin()
