@@ -238,45 +238,53 @@ hitmanTab:CreateButton({
     Name = "Auto Complete Quest",
     SectionParent = hunterQuestSection,
     Callback = function()
-        local player = game:GetService("Players").LocalPlayer
+        local Players = game:GetService("Players")
+        local Workspace = game:GetService("Workspace")
+        local VirtualInput = game:GetService("VirtualInputManager")
+
+        local player = Players.LocalPlayer
         local character = player.Character or player.CharacterAdded:Wait()
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local rootPart = character:WaitForChild("HumanoidRootPart")
         local isInArena = character:FindFirstChild("IsInArena")
 
-        if not rootPart then return end
-
-        local workspace = game:GetService("Workspace")
-        local cannonIsland = workspace:FindFirstChild("Arena") and workspace.Arena:FindFirstChild("CannonIsland")
+        local arena = Workspace:FindFirstChild("Arena")
+        local cannonIsland = arena and arena:FindFirstChild("CannonIsland")
         local gloveModel = cannonIsland and cannonIsland:FindFirstChild("GlovelHoleInTheWall")
         local glovePart = gloveModel and gloveModel:FindFirstChild("GlovelHoleInTheWall")
+
+        local lobby = Workspace:FindFirstChild("Lobby")
+        local teleportPart = lobby and lobby:FindFirstChild("Teleport1")
+        local touchTransmitter = teleportPart and teleportPart:FindFirstChildOfClass("TouchTransmitter")
 
         if isInArena and isInArena.Value then
             if glovePart then
                 rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
             end
         else
-            local lobbyModel = workspace:FindFirstChild("Lobby")
-            local teleportPart = lobbyModel and lobbyModel:FindFirstChild("Teleport1")
-            local touchTransmitter = teleportPart and teleportPart:FindFirstChildOfClass("TouchTransmitter")
             if teleportPart and touchTransmitter then
                 firetouchinterest(rootPart, teleportPart, 0)
                 firetouchinterest(rootPart, teleportPart, 1)
             end
+            task.wait(1)
             if glovePart then
                 rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
             end
         end
 
-        local tool = character:FindFirstChild("Extended") or player.Backpack:FindFirstChild("Extended")
-        if tool then
-            if player.Backpack:FindFirstChild("Extended") then
+        local tool = character:FindFirstChild("Extended")
+        if not tool then
+            tool = player.Backpack:FindFirstChild("Extended")
+            if tool then
                 tool.Parent = character
             end
-            local prompt = gloveModel:FindFirstChildOfClass("ProximityPrompt")
-            if prompt then
-                prompt:InputHoldBegin()
+        end
+
+        if character:FindFirstChild("Extended") then
+            local glovePrompt = gloveModel and gloveModel:FindFirstChildOfClass("ProximityPrompt")
+            if glovePrompt then
+                glovePrompt:InputHoldBegin()
                 task.wait(0.5)
-                prompt:InputHoldEnd()
+                glovePrompt:InputHoldEnd()
             end
         end
 
@@ -287,24 +295,24 @@ hitmanTab:CreateButton({
             rootPart.CFrame = treasureSpot.CFrame
         end
 
-        local virtualInput = game:GetService("VirtualInputManager")
+        task.wait(1)
 
         spawn(function()
             while true do
-                local chestFolder = workspace:FindFirstChild("TreasureChestFolder")
+                local chestFolder = Workspace:FindFirstChild("TreasureChestFolder")
                 local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
                 if chestPart then
+                    task.wait(1)
                     local chestModel = chestPart:FindFirstChild("TreasureChest")
-                    local prompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
-                    if prompt then
-                        prompt:InputHoldBegin()
+                    local chestPrompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
+                    if chestPrompt then
+                        chestPrompt:InputHoldBegin()
                         task.wait(0.5)
-                        prompt:InputHoldEnd()
-                        break
+                        chestPrompt:InputHoldEnd()
                     end
+                    break
                 else
-                    virtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(0.2)
+                    VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                 end
             end
         end)
