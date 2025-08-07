@@ -1,0 +1,70 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local window = Rayfield:CreateWindow({
+    Name = "Egging Over It - Alpha Hax",
+    LoadingTitle = "Loading Assets..",
+    LoadingSubtitle = "Created By Zale",
+    ConfigurationSaving = {
+        Enabled = false,
+        FileName = "Sirius"
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "Zale's Key System",
+        Subtitle = "Enter Your Key",
+        Note = "Rate The Features",
+        FileName = "Sirius",
+        SaveKey = false,
+        Key = "2025"
+    }
+})
+
+local egglerTab = window:CreateTab("Eggler", 4483362458)
+local trialsSection = egglerTab:CreateSection("Trials")
+
+egglerTab:CreateButton({
+    Name = "Auto Get Eggler",
+    SectionParent = trialsSection,
+    Callback = function()
+        local player = game.Players.LocalPlayer
+
+        local function teleportTo(modelName, partName)
+            local model = workspace:FindFirstChild(modelName)
+            if model and model:FindFirstChild(partName) then
+                player.Character.HumanoidRootPart.CFrame = model[partName].CFrame
+            end
+        end
+
+        local function teleportToTrial(trialName)
+            local trialsFolder = workspace:FindFirstChild("TrialCompletedPoints")
+            if trialsFolder then
+                local trialModel = trialsFolder:FindFirstChild(trialName)
+                if trialModel then
+                    local targetPart = trialModel:FindFirstChild("root") or trialModel:FindFirstChildWhichIsA("BasePart")
+                    if targetPart then
+                        player.Character.HumanoidRootPart.CFrame = targetPart.CFrame
+                    end
+                end
+            end
+        end
+
+        local remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes")
+        local kennethRemote = remotes:WaitForChild("KennethInteract")
+
+        teleportTo("Kenneth", "HumanoidRootPart")
+        task.wait(0.5)
+        kennethRemote:FireServer("EggifyPlease")
+
+        task.wait(0.5)
+        teleportToTrial("Trial 1")
+        task.wait(0.5)
+        teleportToTrial("Trial 2")
+        task.wait(0.5)
+        teleportToTrial("Trial 3")
+
+        task.wait(0.5)
+        teleportTo("Kenneth", "HumanoidRootPart")
+        task.wait(0.5)
+        kennethRemote:FireServer("AwardBadge")
+    end
+})
