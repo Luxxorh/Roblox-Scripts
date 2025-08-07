@@ -23,7 +23,7 @@ local lobbyTab = window:CreateTab("Lobby")
 local gameModesSection = lobbyTab:CreateSection("Game-Modes")
 
 lobbyTab:CreateButton({
-    Name = "Teleport To Killstreak Only Server",
+    Name = "Teleport To Killstreak Only Gamemode",
     SectionParent = gameModesSection,
     Callback = function()
         local TeleportService = game:GetService("TeleportService")
@@ -33,17 +33,17 @@ lobbyTab:CreateButton({
 })
 
 lobbyTab:CreateButton({
-    Name = "Teleport To Slap Royale",
+    Name = "Teleport To Slap Royale Gamemode",
     SectionParent = gameModesSection,
     Callback = function()
         local TeleportService = game:GetService("TeleportService")
         local player = game:GetService("Players").LocalPlayer
-        TeleportService:Teleport(9431156611, player)
+        TeleportService:Teleport(9426795465, player)
     end
 })
 
 lobbyTab:CreateButton({
-    Name = "Teleport To No Oneshot Gloves Server",
+    Name = "Teleport To No Oneshot Gloves Gamemode",
     SectionParent = gameModesSection,
     Callback = function()
         local TeleportService = game:GetService("TeleportService")
