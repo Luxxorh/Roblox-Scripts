@@ -89,7 +89,7 @@ arenasTab:CreateButton({
 })
 
 arenasTab:CreateToggle({
-    Name = "Auto-Enter Arena",
+    Name = "Auto-Enter Normal Arena",
     SectionParent = normalArenaSection,
     CurrentValue = false,
     Callback = function(state)
