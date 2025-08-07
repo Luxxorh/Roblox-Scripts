@@ -248,27 +248,30 @@ hitmanTab:CreateButton({
         local isInArena = character:FindFirstChild("IsInArena")
 
         local arena = Workspace:FindFirstChild("Arena")
-        local cannonIsland = arena and arena:FindFirstChild("CannonIsland")
-        local gloveModel = cannonIsland and cannonIsland:FindFirstChild("GlovelHoleInTheWall")
-        local glovePart = gloveModel and gloveModel:FindFirstChild("GlovelHoleInTheWall")
+        if not arena then return end
+
+        local cannonIsland = arena:FindFirstChild("CannonIsland")
+        if not cannonIsland then return end
+
+        local gloveModel = cannonIsland:FindFirstChild("GlovelHoleInTheWall")
+        if not gloveModel then return end
+
+        local glovePart = gloveModel:FindFirstChild("GlovelHoleInTheWall")
+        if not glovePart then return end
 
         local lobby = Workspace:FindFirstChild("Lobby")
         local teleportPart = lobby and lobby:FindFirstChild("Teleport1")
         local touchTransmitter = teleportPart and teleportPart:FindFirstChildOfClass("TouchTransmitter")
 
         if isInArena and isInArena.Value then
-            if glovePart then
-                rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
-            end
+            rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
         else
             if teleportPart and touchTransmitter then
                 firetouchinterest(rootPart, teleportPart, 0)
                 firetouchinterest(rootPart, teleportPart, 1)
             end
             task.wait(1)
-            if glovePart then
-                rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
-            end
+            rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
         end
 
         local tool = character:FindFirstChild("Extended")
@@ -280,7 +283,7 @@ hitmanTab:CreateButton({
         end
 
         if character:FindFirstChild("Extended") then
-            local glovePrompt = glovePart and glovePart:FindFirstChildOfClass("ProximityPrompt")
+            local glovePrompt = glovePart:FindFirstChildOfClass("ProximityPrompt")
             if glovePrompt then
                 glovePrompt.MaxActivationDistance = math.huge
                 glovePrompt:InputHoldBegin()
@@ -289,7 +292,9 @@ hitmanTab:CreateButton({
         end
 
         task.wait(4)
-        local treasureSpot = cannonIsland and cannonIsland:FindFirstChild("TreasureSpots") and cannonIsland.TreasureSpots:FindFirstChild("_treasureSpot11")
+
+        local treasureSpots = cannonIsland:FindFirstChild("TreasureSpots")
+        local treasureSpot = treasureSpots and treasureSpots:FindFirstChild("_treasureSpot11")
         if treasureSpot then
             rootPart.CFrame = treasureSpot.CFrame
         end
@@ -304,11 +309,13 @@ hitmanTab:CreateButton({
                 local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
                 if chestPart then
                     local chestModel = chestPart:FindFirstChild("TreasureChest")
-                    local chestPrompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
-                    if chestPrompt then
-                        chestPrompt.MaxActivationDistance = math.huge
-                        chestPrompt:InputHoldBegin()
-                        chestPrompt:InputHoldEnd()
+                    if chestModel then
+                        local chestPrompt = chestModel:FindFirstChildOfClass("ProximityPrompt")
+                        if chestPrompt then
+                            chestPrompt.MaxActivationDistance = math.huge
+                            chestPrompt:InputHoldBegin()
+                            chestPrompt:InputHoldEnd()
+                        end
                     end
                     break
                 else
