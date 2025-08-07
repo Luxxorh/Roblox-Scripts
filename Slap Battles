@@ -215,3 +215,21 @@ hitmanTab:CreateButton({
         end
     end
 })
+
+local hunterQuestSection = hitmanTab:CreateSection("A Hunt For The Hunter")
+
+hitmanTab:CreateButton({
+    Name = "Accept "A Hunt For The Hunter" Quest",
+    SectionParent = hunterQuestSection,
+    Callback = function()
+        local replicatedStorage = game:GetService("ReplicatedStorage")
+        local networkFolder = replicatedStorage:FindFirstChild("_NETWORK")
+        if networkFolder then
+            for _, child in ipairs(networkFolder:GetChildren()) do
+                if child:IsA("RemoteEvent") and string.find(child.Name, "{") then
+                    child:FireServer("_questChainHitmansHandkerchief")
+                end
+            end
+        end
+    end
+})
