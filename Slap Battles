@@ -289,7 +289,6 @@ hitmanTab:CreateButton({
         end
 
         task.wait(4)
-
         local treasureSpot = cannonIsland and cannonIsland:FindFirstChild("TreasureSpots") and cannonIsland.TreasureSpots:FindFirstChild("_treasureSpot11")
         if treasureSpot then
             rootPart.CFrame = treasureSpot.CFrame
@@ -298,23 +297,25 @@ hitmanTab:CreateButton({
         task.wait(1)
 
         spawn(function()
-    VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-
-    while true do
-        local chestFolder = Workspace:FindFirstChild("TreasureChestFolder")
-        local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
-        if chestPart then
-            local chestModel = chestPart:FindFirstChild("TreasureChest")
-            local chestPrompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
-            if chestPrompt then
-                chestPrompt.MaxActivationDistance = math.huge
-                chestPrompt:InputHoldBegin()
-                chestPrompt:InputHoldEnd()
-            end
-            break
-        else
-            task.wait(5)
             VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-        end
+
+            while true do
+                local chestFolder = Workspace:FindFirstChild("TreasureChestFolder")
+                local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
+                if chestPart then
+                    local chestModel = chestPart:FindFirstChild("TreasureChest")
+                    local chestPrompt = chestModel and chestModel:FindFirstChildOfClass("ProximityPrompt")
+                    if chestPrompt then
+                        chestPrompt.MaxActivationDistance = math.huge
+                        chestPrompt:InputHoldBegin()
+                        chestPrompt:InputHoldEnd()
+                    end
+                    break
+                else
+                    task.wait(5)
+                    VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                end
+            end
+        end)
     end
-end)
+})
