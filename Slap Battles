@@ -271,7 +271,7 @@ hitmanTab:CreateButton({
             glovePrompt:InputHoldEnd()
         end
 
-        task.wait(5)
+        task.wait(5.5)
 
         local treasureSpot = cannonIsland.TreasureSpots._treasureSpot11
         rootPart.CFrame = treasureSpot.CFrame
