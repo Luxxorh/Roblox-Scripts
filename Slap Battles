@@ -261,6 +261,8 @@ hitmanTab:CreateButton({
             firetouchinterest(rootPart, teleportPart, 1)
         end
 
+        task.wait(1)
+
         rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
 
         local tool = character:FindFirstChild("Extended") or player.Backpack:FindFirstChild("Extended")
