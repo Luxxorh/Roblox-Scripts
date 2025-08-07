@@ -157,3 +157,21 @@ arenasTab:CreateToggle({
         end
     end
 })
+
+local hitmanTab = window:CreateTab("Hitman Quests")
+local easterEggSection = hitmanTab:CreateSection("Easter Egg Hunter")
+
+hitmanTab:CreateButton({
+    Name = "Accept Easter Egg Hunter Quest",
+    SectionParent = easterEggSection,
+    Callback = function()
+        local replicatedStorage = game:GetService("ReplicatedStorage")
+        local networkFolder = replicatedStorage:FindFirstChild("_NETWORK")
+        if networkFolder and #networkFolder:GetChildren() >= 14 then
+            local remoteEvent = networkFolder:GetChildren()[14]
+            if remoteEvent:IsA("RemoteEvent") then
+                remoteEvent:FireServer("_questChainEasterHunter")
+            end
+        end
+    end
+})
