@@ -280,13 +280,13 @@ hitmanTab:CreateButton({
         end
 
         if character:FindFirstChild("Extended") then
-            local glovePrompt = gloveModel and gloveModel:FindFirstChildOfClass("ProximityPrompt")
-            if glovePrompt then
-                glovePrompt:InputHoldBegin()
-                task.wait(0.5)
-                glovePrompt:InputHoldEnd()
-            end
-        end
+    local glovePrompt = glovePart and glovePart:FindFirstChildOfClass("ProximityPrompt")
+    if glovePrompt then
+        glovePrompt:InputHoldBegin()
+        task.wait(0.5)
+        glovePrompt:InputHoldEnd()
+    end
+end
 
         task.wait(4)
 
