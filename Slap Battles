@@ -131,14 +131,17 @@ arenasTab:CreateButton({
     end
 })
 
+local autoEnterActive = false
+
 arenasTab:CreateToggle({
     Name = "Auto-Enter Default Only Arena",
     SectionParent = defaultArenaSection,
     Default = false,
     Callback = function(state)
+        autoEnterActive = state
+
         if state then
-            local running = true
-            while running and wait() do
+            while autoEnterActive and wait() do
                 local player = game:GetService("Players").LocalPlayer
                 local character = player.Character
                 if character then
@@ -153,9 +156,6 @@ arenasTab:CreateToggle({
                             firetouchinterest(rootPart, teleportPart, 1)
                         end
                     end
-                end
-                if not state then
-                    running = false
                 end
             end
         end
