@@ -26,11 +26,17 @@ local badgeSection = fanTab:CreateSection("Badge")
 local autoGetFanButton = fanTab:CreateButton({
     Name = "Auto Get Fan",
     Callback = function()
-        local target = workspace:FindFirstChild("Foundation")
-        if target then
-            local children = target:GetChildren()
-            if children[54] then
-                game.Players.LocalPlayer.Character:MoveTo(children[54].Position)
+        local keyPart = workspace:FindFirstChild("QuestStuff")
+        if keyPart then
+            local mesh = keyPart:FindFirstChild("Key")
+            if mesh and mesh:IsA("MeshPart") then
+                local player = game.Players.LocalPlayer
+                local character = player.Character or player.CharacterAdded:Wait()
+                local hrp = character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.CFrame = mesh.CFrame + Vector3.new(0, 3, 0)
+                end
+
                 task.wait(0.5)
 
                 local remoteEvents = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents")
