@@ -108,25 +108,24 @@ arenasTab:CreateToggle({
     SectionParent = normalArenaSection,
     CurrentValue = false,
     Callback = function(state)
+        _G.autoEnterArena = state
         if state then
-            _G.autoEnterArena = true
             spawn(function()
                 while _G.autoEnterArena do
                     local character = game:GetService("Players").LocalPlayer.Character
                     local isInArena = character:FindFirstChild("isInArena")
-                    if isInArena and isInArena.Value == false then
+                    if isInArena and not isInArena.Value then
                         local lobbyModel = workspace:FindFirstChild("Lobby")
-                        local teleportPart = lobbyModel:FindFirstChild("Teleport1")
-                        local touchTransmitter = teleportPart:FindFirstChildOfClass("TouchTransmitter")
+                        local teleportPart = lobbyModel and lobbyModel:FindFirstChild("Teleport1")
                         local rootPart = character:FindFirstChild("HumanoidRootPart")
-                        firetouchinterest(rootPart, teleportPart, 0)
-                        firetouchinterest(rootPart, teleportPart, 1)
+                        if teleportPart and rootPart then
+                            firetouchinterest(rootPart, teleportPart, 0)
+                            firetouchinterest(rootPart, teleportPart, 1)
+                        end
                     end
                     wait()
                 end
             end)
-        else
-            _G.autoEnterArena = false
         end
     end
 })
