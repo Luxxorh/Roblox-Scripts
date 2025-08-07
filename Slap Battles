@@ -74,7 +74,7 @@ local arenasTab = window:CreateTab("Arenas")
 local normalArenaSection = arenasTab:CreateSection("Normal Arena")
 
 arenasTab:CreateButton({
-    Name = "Teleport To Normal Arena",
+    Name = "Enter Normal Arena",
     SectionParent = normalArenaSection,
     Callback = function()
         local lobbyModel = workspace:FindFirstChild("Lobby")
