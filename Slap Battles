@@ -109,8 +109,9 @@ arenasTab:CreateToggle({
     CurrentValue = false,
     Callback = function(state)
         if state then
+            _G.autoEnterArena = true
             spawn(function()
-                while true do
+                while _G.autoEnterArena do
                     local character = game:GetService("Players").LocalPlayer.Character
                     local isInArena = character:FindFirstChild("isInArena")
                     if isInArena and isInArena.Value == false then
@@ -124,6 +125,8 @@ arenasTab:CreateToggle({
                     wait()
                 end
             end)
+        else
+            _G.autoEnterArena = false
         end
     end
 })
