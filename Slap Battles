@@ -167,10 +167,11 @@ hitmanTab:CreateButton({
     Callback = function()
         local replicatedStorage = game:GetService("ReplicatedStorage")
         local networkFolder = replicatedStorage:FindFirstChild("_NETWORK")
-        if networkFolder and #networkFolder:GetChildren() >= 28 then
-            local remoteEvent = networkFolder:GetChildren()[28]
-            if remoteEvent:IsA("RemoteEvent") then
-                remoteEvent:FireServer("_questChainEasterHunter")
+        if networkFolder then
+            for _, child in ipairs(networkFolder:GetChildren()) do
+                if child:IsA("RemoteEvent") and string.find(child.Name, "{") then
+                    child:FireServer("_questChainEasterHunter")
+                end
             end
         end
     end
