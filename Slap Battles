@@ -259,16 +259,11 @@ hitmanTab:CreateButton({
         if not isInArena or not isInArena.Value then
             firetouchinterest(rootPart, teleportPart, 0)
             firetouchinterest(rootPart, teleportPart, 1)
+            task.wait(1)
         end
-
-        task.wait(1)
 
         rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
-
-        local tool = character:FindFirstChild("Extended") or player.Backpack:FindFirstChild("Extended")
-        if tool then
-            tool.Parent = character
-        end
+        task.wait(1)
 
         if glovePrompt then
             glovePrompt.MaxActivationDistance = math.huge
@@ -283,20 +278,24 @@ hitmanTab:CreateButton({
 
         spawn(function()
             VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            task.wait(5)
 
             while true do
                 local chestModel = Workspace.TreasureChestFolder.TreasureChest:FindFirstChild("TreasureChest")
                 if chestModel then
-                    local chestPrompt = chestModel:FindFirstChildOfClass("ProximityPrompt")
-                    if chestPrompt then
-                        chestPrompt.MaxActivationDistance = math.huge
-                        chestPrompt:InputHoldBegin()
-                        chestPrompt:InputHoldEnd()
+                    local chestPart = chestModel:FindFirstChild("TreasureChest")
+                    if chestPart then
+                        local chestPrompt = chestPart:FindFirstChildOfClass("ProximityPrompt")
+                        if chestPrompt then
+                            chestPrompt.MaxActivationDistance = math.huge
+                            chestPrompt:InputHoldBegin()
+                            chestPrompt:InputHoldEnd()
+                        end
                     end
                     break
                 else
-                    task.wait(5)
                     VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(5)
                 end
             end
         end)
