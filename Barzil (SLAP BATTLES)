@@ -20,39 +20,23 @@ local window = Rayfield:CreateWindow({
 })
 
 local fanTab = window:CreateTab("Fan")
-
 local badgeSection = fanTab:CreateSection("Badge")
 
-local autoGetFanButton = fanTab:CreateButton({
+fanTab:CreateButton({
     Name = "Auto Get Fan",
     Callback = function()
-        local keyPart = workspace:FindFirstChild("QuestStuff")
-        if keyPart then
-            local mesh = keyPart:FindFirstChild("Key")
-            if mesh and mesh:IsA("MeshPart") then
-                local player = game.Players.LocalPlayer
-                local character = player.Character or player.CharacterAdded:Wait()
-                local hrp = character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.CFrame = mesh.CFrame + Vector3.new(0, 3, 0)
-                end
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Events = ReplicatedStorage:WaitForChild("RemoteEvents")
 
-                task.wait(0.5)
-
-                local remoteEvents = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents")
-                local suitUp = remoteEvents:FindFirstChild("SuitUpClown")
-                if suitUp then
-                    suitUp:FireServer()
-                end
-
-                task.wait(0.5)
-
-                local badgeReward = remoteEvents:FindFirstChild("KeyBadgeReward")
-                if badgeReward then
-                    badgeReward:FireServer()
-                end
-            end
-        end
+        Events.SuitUpClown:FireServer()
+        wait(0.1)
+        Events.KeyQuest:FireServer()
+        wait(0.1)
+        Events.KeyAcquired:FireServer()
+        wait(0.1)
+        Events.GOHOME:FireServer()
+        wait(0.1)
+        Events.KeyBadgeReward:FireServer()
     end,
     SectionParent = badgeSection
 })
