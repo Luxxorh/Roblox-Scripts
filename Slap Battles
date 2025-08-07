@@ -114,3 +114,50 @@ arenasTab:CreateToggle({
         end
     end
 })
+
+local defaultArenaSection = arenasTab:CreateSection("Default Arena")
+
+arenasTab:CreateButton({
+    Name = "Enter Default Only Arena",
+    SectionParent = defaultArenaSection,
+    Callback = function()
+        local lobbyModel = workspace:FindFirstChild("Lobby")
+        local teleportPart = lobbyModel:FindFirstChild("Teleport2")
+        local touchTransmitter = teleportPart:FindFirstChildOfClass("TouchTransmitter")
+        local character = game:GetService("Players").LocalPlayer.Character
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        firetouchinterest(rootPart, teleportPart, 0)
+        firetouchinterest(rootPart, teleportPart, 1)
+    end
+})
+
+arenasTab:CreateToggle({
+    Name = "Auto-Enter Default Only Arena",
+    SectionParent = defaultArenaSection,
+    Default = false,
+    Callback = function(state)
+        if state then
+            local running = true
+            while running and wait() do
+                local player = game:GetService("Players").LocalPlayer
+                local character = player.Character
+                if character then
+                    local isInDefaultArena = character:FindFirstChild("IsInDefaultArena")
+                    if isInDefaultArena and not isInDefaultArena.Value then
+                        local lobbyModel = workspace:FindFirstChild("Lobby")
+                        local teleportPart = lobbyModel and lobbyModel:FindFirstChild("Teleport2")
+                        local touchTransmitter = teleportPart and teleportPart:FindFirstChildOfClass("TouchTransmitter")
+                        local rootPart = character:FindFirstChild("HumanoidRootPart")
+                        if rootPart and teleportPart and touchTransmitter then
+                            firetouchinterest(rootPart, teleportPart, 0)
+                            firetouchinterest(rootPart, teleportPart, 1)
+                        end
+                    end
+                end
+                if not state then
+                    running = false
+                end
+            end
+        end
+    end
+})
