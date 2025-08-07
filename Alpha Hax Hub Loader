@@ -98,7 +98,7 @@ local gameScripts = {
     [9802429235] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/You%20don't%20want%20to%20see%20me%20infuriated",
     [16552821455] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Dandys%20World",
     [16993432698] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Impossible%20Squid%20Game!",
-    [2380077519] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Egging%20Over%20It%20(SLAP%20BATTLES)"
+    [129665246576996] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Egging%20Over%20It%20(SLAP%20BATTLES)"
 }
             local gameId = game.PlaceId
             if gameScripts[gameId] then
@@ -121,7 +121,7 @@ local gameScripts = {
                     notificationText = "Loading Dandys World Hub..."
                 elseif gameId == 16993432698 then
                     notificationText = "Loading Impossible Squid Game Hub..."
-                elseif gameId == 2380077519 then
+                elseif gameId == 129665246576996 then
                     notificationText = "Loading Egging Over It Hub..."
                 end
                 game.StarterGui:SetCore("SendNotification", {
