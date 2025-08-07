@@ -131,33 +131,29 @@ arenasTab:CreateButton({
     end
 })
 
-local autoEnterActive = false
-
 arenasTab:CreateToggle({
     Name = "Auto-Enter Default Only Arena",
     SectionParent = defaultArenaSection,
-    Default = false,
+    CurrentValue = false,
     Callback = function(state)
-        autoEnterActive = state
-
+        _G.autoEnterDefaultArena = state
         if state then
-            while autoEnterActive and wait() do
-                local player = game:GetService("Players").LocalPlayer
-                local character = player.Character
-                if character then
+            spawn(function()
+                while _G.autoEnterDefaultArena do
+                    local character = game:GetService("Players").LocalPlayer.Character
                     local isInDefaultArena = character:FindFirstChild("IsInDefaultArena")
                     if isInDefaultArena and not isInDefaultArena.Value then
                         local lobbyModel = workspace:FindFirstChild("Lobby")
                         local teleportPart = lobbyModel and lobbyModel:FindFirstChild("Teleport2")
-                        local touchTransmitter = teleportPart and teleportPart:FindFirstChildOfClass("TouchTransmitter")
                         local rootPart = character:FindFirstChild("HumanoidRootPart")
-                        if rootPart and teleportPart and touchTransmitter then
+                        if teleportPart and rootPart then
                             firetouchinterest(rootPart, teleportPart, 0)
                             firetouchinterest(rootPart, teleportPart, 1)
                         end
                     end
+                    wait()
                 end
-            end
+            end)
         end
     end
 })
