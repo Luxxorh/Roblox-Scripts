@@ -199,3 +199,19 @@ hitmanTab:CreateButton({
         end
     end
 })
+
+hitmanTab:CreateButton({
+    Name = "Claim Quest (Use After You Have Grabbed All Easter Eggs)",
+    SectionParent = easterEggSection,
+    Callback = function()
+        local replicatedStorage = game:GetService("ReplicatedStorage")
+        local networkFolder = replicatedStorage:FindFirstChild("_NETWORK")
+        if networkFolder then
+            for _, child in ipairs(networkFolder:GetChildren()) do
+                if child:IsA("RemoteEvent") and string.find(child.Name, "{") then
+                    child:FireServer("_questChainEasterHunter")
+                end
+            end
+        end
+    end
+})
