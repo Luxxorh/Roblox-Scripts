@@ -274,10 +274,10 @@ hitmanTab:CreateButton({
         task.wait(5.5)
 
         local treasureSpot = cannonIsland.TreasureSpots._treasureSpot11
-        rootPart.CFrame = treasureSpot.CFrame
+        rootPart.CFrame = treasureSpot.CFrame + treasureSpot.CFrame.LookVector * -3
 
         spawn(function()
-            task.wait(4)
+            task.wait(1)
 
             while true do
                 local chestModel = Workspace.TreasureChestFolder:FindFirstChild("TreasureChest")
@@ -294,7 +294,7 @@ hitmanTab:CreateButton({
                     break
                 else
                     VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(5)
+                    task.wait(3.5)
                 end
             end
         end)
