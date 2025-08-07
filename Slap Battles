@@ -250,7 +250,7 @@ hitmanTab:CreateButton({
         local arena = Workspace.Arena
         local cannonIsland = arena.CannonIsland
         local gloveModel = cannonIsland.GlovelHoleInTheWall
-        local glovePart = gloveModel.GlovePart
+        local glovePart = gloveModel.GlovelHoleInTheWall
         local glovePrompt = gloveModel:FindFirstChildOfClass("ProximityPrompt")
 
         local lobby = Workspace.Lobby
