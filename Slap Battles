@@ -219,7 +219,7 @@ hitmanTab:CreateButton({
 local hunterQuestSection = hitmanTab:CreateSection("A Hunt For The Hunter")
 
 hitmanTab:CreateButton({
-    Name = "Accept "A Hunt For The Hunter" Quest",
+    Name = 'Accept "A Hunt For The Hunter" Quest',
     SectionParent = hunterQuestSection,
     Callback = function()
         local replicatedStorage = game:GetService("ReplicatedStorage")
