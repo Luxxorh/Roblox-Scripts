@@ -300,3 +300,22 @@ hitmanTab:CreateButton({
         end)
     end
 })
+
+hitmanTab:CreateButton({
+    Name = "Claim Quest Reward (Use After You Have Gotten The Hitmans Special Trinket)",
+    SectionParent = hunterQuestSection,
+    Callback = function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local networkFolder = ReplicatedStorage:WaitForChild("_NETWORK")
+
+        local args = {
+            "_questChainHitmansHandkerchief"
+        }
+
+        for _, remote in ipairs(networkFolder:GetChildren()) do
+            if remote:IsA("RemoteEvent") and string.find(remote.Name, "{") then
+                remote:FireServer(unpack(args))
+            end
+        end
+    end
+})
