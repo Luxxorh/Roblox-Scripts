@@ -247,75 +247,49 @@ hitmanTab:CreateButton({
         local rootPart = character:WaitForChild("HumanoidRootPart")
         local isInArena = character:FindFirstChild("IsInArena")
 
-        local arena = Workspace:FindFirstChild("Arena")
-        if not arena then return end
+        local arena = Workspace.Arena
+        local cannonIsland = arena.CannonIsland
+        local gloveModel = cannonIsland.GlovelHoleInTheWall
+        local glovePart = gloveModel.GlovePart
+        local glovePrompt = gloveModel:FindFirstChildOfClass("ProximityPrompt")
 
-        local cannonIsland = arena:FindFirstChild("CannonIsland")
-        if not cannonIsland then return end
+        local lobby = Workspace.Lobby
+        local teleportPart = lobby.Teleport1
 
-        local gloveModel = cannonIsland:FindFirstChild("GlovelHoleInTheWall")
-        if not gloveModel then return end
-
-        local glovePart = gloveModel:FindFirstChild("GlovePart")
-        if not glovePart then return end
-
-        local lobby = Workspace:FindFirstChild("Lobby")
-        local teleportPart = lobby and lobby:FindFirstChild("Teleport1")
-        local touchTransmitter = teleportPart and teleportPart:FindFirstChildOfClass("TouchTransmitter")
-
-        if isInArena and isInArena.Value then
-            rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
-        else
-            if teleportPart and touchTransmitter then
-                firetouchinterest(rootPart, teleportPart, 0)
-                firetouchinterest(rootPart, teleportPart, 1)
-            end
-            task.wait(1)
-            rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
+        if not isInArena or not isInArena.Value then
+            firetouchinterest(rootPart, teleportPart, 0)
+            firetouchinterest(rootPart, teleportPart, 1)
         end
 
-        local tool = character:FindFirstChild("Extended")
-        if not tool then
-            tool = player.Backpack:FindFirstChild("Extended")
-            if tool then
-                tool.Parent = character
-            end
+        rootPart.CFrame = glovePart.CFrame + glovePart.CFrame.LookVector * -3
+
+        local tool = character:FindFirstChild("Extended") or player.Backpack:FindFirstChild("Extended")
+        if tool then
+            tool.Parent = character
         end
 
-        if character:FindFirstChild("Extended") then
-            local glovePrompt = gloveModel:FindFirstChildOfClass("ProximityPrompt")
-            if glovePrompt then
-                glovePrompt.MaxActivationDistance = math.huge
-                glovePrompt:InputHoldBegin()
-                glovePrompt:InputHoldEnd()
-            end
+        if glovePrompt then
+            glovePrompt.MaxActivationDistance = math.huge
+            glovePrompt:InputHoldBegin()
+            glovePrompt:InputHoldEnd()
         end
 
-        task.wait(4)
+        task.wait(5)
 
-        local treasureSpots = cannonIsland:FindFirstChild("TreasureSpots")
-        local treasureSpot = treasureSpots and treasureSpots:FindFirstChild("_treasureSpot11")
-        if treasureSpot then
-            rootPart.CFrame = treasureSpot.CFrame
-        end
-
-        task.wait(1)
+        local treasureSpot = cannonIsland.TreasureSpots._treasureSpot11
+        rootPart.CFrame = treasureSpot.CFrame
 
         spawn(function()
             VirtualInput:SendKeyEvent(true, Enum.KeyCode.E, false, game)
 
             while true do
-                local chestFolder = Workspace:FindFirstChild("TreasureChestFolder")
-                local chestPart = chestFolder and chestFolder:FindFirstChild("TreasureChest")
-                if chestPart then
-                    local chestModel = chestPart:FindFirstChild("TreasureChest")
-                    if chestModel then
-                        local chestPrompt = chestModel:FindFirstChildOfClass("ProximityPrompt")
-                        if chestPrompt then
-                            chestPrompt.MaxActivationDistance = math.huge
-                            chestPrompt:InputHoldBegin()
-                            chestPrompt:InputHoldEnd()
-                        end
+                local chestModel = Workspace.TreasureChestFolder.TreasureChest:FindFirstChild("TreasureChest")
+                if chestModel then
+                    local chestPrompt = chestModel:FindFirstChildOfClass("ProximityPrompt")
+                    if chestPrompt then
+                        chestPrompt.MaxActivationDistance = math.huge
+                        chestPrompt:InputHoldBegin()
+                        chestPrompt:InputHoldEnd()
                     end
                     break
                 else
