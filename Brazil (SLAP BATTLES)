@@ -1,0 +1,52 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local window = Rayfield:CreateWindow({
+    Name = "barzil - Alpha Hax",
+    LoadingTitle = "Loading Assets..",
+    LoadingSubtitle = "Created By Zale",
+    ConfigurationSaving = {
+        Enabled = false,
+        FileName = "Sirius"
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "Zale's Key System",
+        Subtitle = "Enter Your Key",
+        Note = "Rate The Features",
+        FileName = "Sirius",
+        SaveKey = false,
+        Key = "2025"
+    }
+})
+
+local fanTab = window:CreateTab("Fan")
+
+local badgeSection = fanTab:CreateSection("Badge")
+
+local autoGetFanButton = fanTab:CreateButton({
+    Name = "Auto Get Fan",
+    Callback = function()
+        local target = workspace:FindFirstChild("Foundation")
+        if target then
+            local children = target:GetChildren()
+            if children[54] then
+                game.Players.LocalPlayer.Character:MoveTo(children[54].Position)
+                task.wait(0.5)
+
+                local remoteEvents = game:GetService("ReplicatedStorage"):WaitForChild("RemoteEvents")
+                local suitUp = remoteEvents:FindFirstChild("SuitUpClown")
+                if suitUp then
+                    suitUp:FireServer()
+                end
+
+                task.wait(0.5)
+
+                local badgeReward = remoteEvents:FindFirstChild("KeyBadgeReward")
+                if badgeReward then
+                    badgeReward:FireServer()
+                end
+            end
+        end
+    end,
+    SectionParent = badgeSection
+})
