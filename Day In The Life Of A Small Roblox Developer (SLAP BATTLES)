@@ -85,6 +85,10 @@ metaverseTab:CreateButton({
         local hitBox = fridge and fridge:FindFirstChild("HitBox")
         if hitBox then
             fireClickDetector(hitBox)
+            local grantAward = fridge:FindFirstChild("GrantAward")
+            if grantAward then
+                fireClickDetector(grantAward)
+            end
         end
 
         local soundGroup = SoundService:FindFirstChild("TenVoiceLines")
