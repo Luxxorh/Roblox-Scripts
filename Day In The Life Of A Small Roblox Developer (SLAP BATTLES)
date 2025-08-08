@@ -94,14 +94,13 @@ metaverseTab:CreateButton({
         local microwave = Workspace:FindFirstChild("Microwave")
         local door = microwave and microwave:FindFirstChild("Door")
         local part = door and door:FindFirstChild("Part")
-        if microwave and part then
+        local hitBox = microwave and microwave:FindFirstChild("HitBox")
+        if microwave and part and hitBox then
+            fireClickDetector(hitBox)
             while true do
                 wait()
                 if part.Transparency == 1 then
-                    local hitBox = microwave:FindFirstChild("HitBox")
-                    if hitBox then
-                        fireClickDetector(hitBox)
-                    end
+                    fireClickDetector(hitBox)
                     break
                 end
             end
