@@ -24,6 +24,8 @@ local badgeSection = metaverseTab:CreateSection("Badge")
 
 local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 
@@ -131,39 +133,55 @@ metaverseTab:CreateButton({
             end)
         end
 
-        -- ⏱ Start 30-second timer when first "Popup_" is found
         local timerStarted = false
         local startTime = 0
 
         while true do
             wait()
 
-            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            local screenGui = playerGui and playerGui:FindFirstChild("RealComputerScreenGui")
-            local computerScreen = screenGui and screenGui:FindFirstChild("ComputerScreen")
-            local suggestionsQTE = computerScreen and computerScreen:FindFirstChild("SuggestionsQTE")
-            local recyclingBin = suggestionsQTE and suggestionsQTE:FindFirstChild("RecyclingBin")
+            local gui = LocalPlayer:FindFirstChild("PlayerGui")
+            local screen = gui and gui:FindFirstChild("RealComputerScreenGui")
+            local comp = screen and screen:FindFirstChild("ComputerScreen")
+            local qte = comp and comp:FindFirstChild("SuggestionsQTE")
+            local bin = qte and qte:FindFirstChild("RecyclingBin")
 
-            if suggestionsQTE and recyclingBin then
-                local foundPopup = false
-
-                for _, child in pairs(suggestionsQTE:GetChildren()) do
+            if qte and bin then
+                local found = false
+                for _, child in pairs(qte:GetChildren()) do
                     if string.find(child.Name, "Popup_") then
-                        foundPopup = true
-                        child.Position = recyclingBin.Position
+                        found = true
+                        child.Position = bin.Position
                     end
                 end
-
-                if foundPopup and not timerStarted then
+                if found and not timerStarted then
                     timerStarted = true
                     startTime = tick()
                 end
-
                 if timerStarted and tick() - startTime >= 30 then
                     break
                 end
             end
         end
+
+        wait(2)
+        ReplicatedStorage.Remotes.ComputerState:FireServer("Victory")
+        wait(0.025)
+        ReplicatedStorage.Remotes.ComputerState:Destroy()
+        LocalPlayer.PlayerGui.RealComputerScreenGui.Enabled = false
+        LocalPlayer.Character.Humanoid.Sit = false
+        wait(1.5)
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-14, 37, 49)
+        wait(2)
+
+        repeat
+            wait()
+            local qteGui = LocalPlayer.PlayerGui:FindFirstChild("DavidShrineQTE")
+            local pc = qteGui and qteGui:FindFirstChild("DavidShrineQTE") and qteGui.DavidShrineQTE:FindFirstChild("PC")
+            local label = pc and pc:FindFirstChild("QuickTimeLabel")
+            if label and label.Visible then
+                VirtualInputManager:SendKeyEvent(true, label.Text, false, VirtualInputManager)
+            end
+        until LocalPlayer.PlayerGui.DavidShrineQTE.DavidShrineQTE.ScoreLabel.Text == "Score: 150"
     end,
     SectionParent = badgeSection
 })
