@@ -91,28 +91,26 @@ metaverseTab:CreateButton({
             end
         end
 
+        local microwave = Workspace:FindFirstChild("Microwave")
+        local door = microwave and microwave:FindFirstChild("Door")
+        local part = door and door:FindFirstChild("Part")
+        if microwave and part then
+            while true do
+                wait()
+                if part.Transparency == 1 then
+                    local hitBox = microwave:FindFirstChild("HitBox")
+                    if hitBox then
+                        fireClickDetector(hitBox)
+                    end
+                    break
+                end
+            end
+        end
+
         local soundGroup = SoundService:FindFirstChild("TenVoiceLines")
-        local microwaveHint = soundGroup and soundGroup:FindFirstChild("MicrowaveHint")
         local drinkBrewzuckiHint = soundGroup and soundGroup:FindFirstChild("DrinkBrewzuckiHint")
         local basementDoorHint = soundGroup and soundGroup:FindFirstChild("BasementDoorHint")
         local computerHint = soundGroup and soundGroup:FindFirstChild("ComputerHint")
-
-        if microwaveHint then
-            onSoundPlay(microwaveHint, function()
-                local microwave = Workspace:FindFirstChild("Microwave")
-                local hitBox = microwave and microwave:FindFirstChild("HitBox")
-                if hitBox then fireClickDetector(hitBox) end
-
-                local microwaveSound = microwave and microwave:FindFirstChild("MicrowaveSound")
-                if microwaveSound then
-                    microwaveSound:GetPropertyChangedSignal("Playing"):Connect(function()
-                        if not microwaveSound.Playing then
-                            if hitBox then fireClickDetector(hitBox) end
-                        end
-                    end)
-                end
-            end)
-        end
 
         if drinkBrewzuckiHint then
             onSoundPlay(drinkBrewzuckiHint, function()
