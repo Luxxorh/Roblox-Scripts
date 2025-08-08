@@ -57,3 +57,32 @@ boxerTab:CreateButton({
     end,
     SectionParent = badgeSectionBoxer
 })
+
+local metaverseTab = window:CreateTab("Metaverse")
+local badgeSectionMetaverse = metaverseTab:CreateSection("Badge")
+
+metaverseTab:CreateButton({
+    Name = "Teleport To Metaverse Game (Rerun The Loader When Your In The Game)",
+    Callback = function()
+        local buildings = workspace:FindFirstChild("Buildings")
+        if buildings then
+            local tower = buildings:FindFirstChild("wizard twoer 2")
+            if tower then
+                local model = tower:FindFirstChild("Model")
+                if model then
+                    local trigger = model:FindFirstChild("Trigger")
+                    if trigger and trigger:IsA("BasePart") then
+                        local transmitter = trigger:FindFirstChildOfClass("TouchTransmitter")
+                        if transmitter then
+                            local character = game.Players.LocalPlayer.Character or game.Players.LocalPlayer.CharacterAdded:Wait()
+                            local hrp = character:WaitForChild("HumanoidRootPart")
+                            firetouchinterest(hrp, trigger, 0)
+                            firetouchinterest(hrp, trigger, 1)
+                        end
+                    end
+                end
+            end
+        end
+    end,
+    SectionParent = badgeSectionMetaverse
+})
