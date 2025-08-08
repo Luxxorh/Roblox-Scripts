@@ -100,7 +100,8 @@ local gameScripts = {
     [16993432698] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Impossible%20Squid%20Game!",
     [129665246576996] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Egging%20Over%20It%20(SLAP%20BATTLES)",
     [7234087065] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Barzil%20(SLAP%20BATTLES)",
-    [136005148166028] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Day%20In%20The%20Life%20Of%20A%20Small%20Roblox%20Developer%20(SLAP%20BATTLES)"
+    [136005148166028] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/Day%20In%20The%20Life%20Of%20A%20Small%20Roblox%20Developer%20(SLAP%20BATTLES)",
+    [102908326578005] = "https://raw.githubusercontent.com/Luxxorh/Roblox-Scripts/refs/heads/main/FIVE%20NIGHTS%20AT%20OOGS%20(SLAP%20BATTLES)"
 }
             local gameId = game.PlaceId
             if gameScripts[gameId] then
@@ -129,6 +130,8 @@ local gameScripts = {
                     notificationText = "Loading barzil hub..."
                 elseif gameId == 136005148166028 then
                     notificationText = "Loading Day In A Life Of A Small Roblox Developer Hub..."
+                elseif gameId == 102908326578005 then
+                    notificationText = "Loading FIVE NIGHTS AT OOGS Hub..."
                 end
                 game.StarterGui:SetCore("SendNotification", {
                     Title = "Game Supported",
