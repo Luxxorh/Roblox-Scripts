@@ -22,7 +22,7 @@ local window = Rayfield:CreateWindow({
 local clockTab = window:CreateTab("Clock")
 local badgeSection = clockTab:CreateSection("Badge")
 
-local autoClockButton = clockTab:CreateButton({
+clockTab:CreateButton({
     Name = "Auto Get Clock",
     SectionParent = badgeSection,
     Callback = function()
@@ -33,11 +33,13 @@ local autoClockButton = clockTab:CreateButton({
         if cellar then
             local prompt = cellar:FindFirstChildWhichIsA("ProximityPrompt", true)
             if prompt then
-                fireproximityprompt(prompt)
+                prompt:InputHoldBegin()
+                task.wait()
+                prompt:InputHoldEnd()
             end
         end
 
-        task.wait(0.5)
+        task.wait(1)
 
         local furnitureFolder = workspace:FindFirstChild("Furniture")
         if furnitureFolder then
@@ -53,7 +55,7 @@ local autoClockButton = clockTab:CreateButton({
             end
         end
 
-        task.wait(0.5)
+        task.wait(1)
 
         if furnitureFolder then
             local dresser = furnitureFolder:FindFirstChild("parentsDresser")
@@ -71,16 +73,13 @@ local autoClockButton = clockTab:CreateButton({
             end
         end
 
-        task.wait(0.5)
+        task.wait(1)
 
         local backpack = player:FindFirstChild("Backpack")
         if backpack then
-            local keyTool = backpack:FindFirstChild("Key")
-            if keyTool then
-                local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-                if humanoid then
-                    humanoid:EquipTool(keyTool)
-                end
+            local tool = backpack:FindFirstChildWhichIsA("Tool")
+            if tool then
+                tool.Parent = character
             end
         end
 
