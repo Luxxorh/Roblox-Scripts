@@ -135,6 +135,30 @@ metaverseTab:CreateButton({
                 teleportToSeat("ComputerChair")
             end)
         end
+
+        local computerFolder = Workspace:FindFirstChild("Computer")
+        local normalPart = computerFolder and computerFolder:FindFirstChild("Normal")
+        local errorSound = normalPart and normalPart:FindFirstChild("error-WINDOWS XP")
+
+        if errorSound then
+            errorSound:GetPropertyChangedSignal("Playing"):Connect(function()
+                if errorSound.Playing then
+                    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+                    local screenGui = playerGui and playerGui:FindFirstChild("RealComputerScreenGui")
+                    local computerScreen = screenGui and screenGui:FindFirstChild("ComputerScreen")
+                    local suggestionsQTE = computerScreen and computerScreen:FindFirstChild("SuggestionsQTE")
+                    local recyclingBin = suggestionsQTE and suggestionsQTE:FindFirstChild("RecyclingBin")
+
+                    if suggestionsQTE and recyclingBin then
+                        for _, child in pairs(suggestionsQTE:GetChildren()) do
+                            if child:IsA("Frame") and string.find(child.Name, "Popup_") then
+                                child.Position = recyclingBin.Position
+                            end
+                        end
+                    end
+                end
+            end)
+        end
     end,
     SectionParent = badgeSection
 })
