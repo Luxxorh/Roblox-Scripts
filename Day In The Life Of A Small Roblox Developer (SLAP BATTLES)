@@ -22,6 +22,11 @@ local window = Rayfield:CreateWindow({
 local metaverseTab = window:CreateTab("Metaverse")
 local badgeSection = metaverseTab:CreateSection("Badge")
 
+local Players = game:GetService("Players")
+local SoundService = game:GetService("SoundService")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+
 local function fireClickDetector(part)
     local clickDetector = part:FindFirstChildOfClass("ClickDetector")
     if clickDetector then
@@ -30,68 +35,105 @@ local function fireClickDetector(part)
 end
 
 local function equipTool(toolName)
-    local player = game.Players.LocalPlayer
-    local tool = player.Backpack:FindFirstChild(toolName)
+    local tool = LocalPlayer.Backpack:FindFirstChild(toolName)
     if tool then
-        tool.Parent = player.Character
+        tool.Parent = LocalPlayer.Character
     end
 end
 
-local function simulateClick()
-    local vim = game:GetService("VirtualInputManager")
-    vim:SendMouseButtonEvent(500, 500, 0, true, game, 1)
-    vim:SendMouseButtonEvent(500, 500, 0, false, game, 1)
+local function unequipTool(toolName)
+    local tool = LocalPlayer.Character:FindFirstChild(toolName)
+    if tool then
+        tool.Parent = LocalPlayer.Backpack
+    end
+end
+
+local function activateTool(toolName)
+    local tool = LocalPlayer.Character:FindFirstChild(toolName)
+    if tool and tool:IsA("Tool") then
+        tool:Activate()
+    end
+end
+
+local function teleportToSeat(modelName)
+    local model = Workspace:FindFirstChild(modelName)
+    if model then
+        for _, part in pairs(model:GetDescendants()) do
+            if part:IsA("Seat") then
+                LocalPlayer.Character:MoveTo(part.Position)
+                break
+            end
+        end
+    end
+end
+
+local function onSoundPlay(sound, callback)
+    sound:GetPropertyChangedSignal("Playing"):Connect(function()
+        if sound.Playing then
+            callback()
+        end
+    end)
 end
 
 metaverseTab:CreateButton({
     Name = "Auto Get Metaverse",
     Callback = function()
-        local kitchen = workspace:FindFirstChild("Kitchen")
-        if kitchen then
-            local fridge = kitchen:FindFirstChild("Fridge")
-            if fridge then
-                local grantAward = fridge:FindFirstChild("GrantAward")
-                if grantAward then
-                    fireClickDetector(grantAward)
+        local soundGroup = SoundService:FindFirstChild("TenVoiceLines")
+        if not soundGroup then return end
+
+        local openFridgeHint = soundGroup:FindFirstChild("OpenFridgeHint")
+        local microwaveHint = soundGroup:FindFirstChild("MicrowaveHint")
+        local drinkBrewzuckiHint = soundGroup:FindFirstChild("DrinkBrewzuckiHint")
+        local basementDoorHint = soundGroup:FindFirstChild("BasementDoorHint")
+        local computerHint = soundGroup:FindFirstChild("ComputerHint")
+
+        if openFridgeHint then
+            onSoundPlay(openFridgeHint, function()
+                local kitchen = Workspace:FindFirstChild("Kitchen")
+                local fridge = kitchen and kitchen:FindFirstChild("Fridge")
+                local hitBox = fridge and fridge:FindFirstChild("HitBox")
+                if hitBox then fireClickDetector(hitBox) end
+            end)
+        end
+
+        if microwaveHint then
+            onSoundPlay(microwaveHint, function()
+                local microwave = Workspace:FindFirstChild("Microwave")
+                local hitBox = microwave and microwave:FindFirstChild("HitBox")
+                if hitBox then fireClickDetector(hitBox) end
+
+                local microwaveSound = microwave and microwave:FindFirstChild("MicrowaveSound")
+                if microwaveSound then
+                    microwaveSound:GetPropertyChangedSignal("Playing"):Connect(function()
+                        if not microwaveSound.Playing then
+                            if hitBox then fireClickDetector(hitBox) end
+                        end
+                    end)
                 end
-            end
+            end)
         end
 
-        task.wait(3)
-
-        local microwave = workspace:FindFirstChild("Microwave")
-        if microwave then
-            local hitBox = microwave:FindFirstChild("HitBox")
-            if hitBox then
-                fireClickDetector(hitBox)
-                task.wait(3)
-                fireClickDetector(hitBox)
-            end
+        if drinkBrewzuckiHint then
+            onSoundPlay(drinkBrewzuckiHint, function()
+                equipTool("Brewzucki")
+                activateTool("Brewzucki")
+                unequipTool("Brewzucki")
+            end)
         end
 
-        local couch = workspace:FindFirstChild("Couch")
-        if couch then
-            for _, part in pairs(couch:GetDescendants()) do
-                if part:IsA("Seat") and part:FindFirstChild("SeatWeld") then
-                    game.Players.LocalPlayer.Character:MoveTo(part.Position)
-                    break
-                end
-            end
+        if basementDoorHint then
+            onSoundPlay(basementDoorHint, function()
+                equipTool("Medium Rare Chicken")
+                local basementTable = Workspace:FindFirstChild("BasementTable")
+                local hitBox = basementTable and basementTable:FindFirstChild("HitBox")
+                if hitBox then fireClickDetector(hitBox) end
+            end)
         end
 
-        equipTool("Brewzucki")
-        simulateClick()
-
-        task.wait(3)
-
-        equipTool("Medium Rare Chicken")
-
-        local basementTable = workspace:FindFirstChild("BasementTable")
-        if basementTable then
-            local hitBox = basementTable:FindFirstChild("HitBox")
-            if hitBox then
-                fireClickDetector(hitBox)
-            end
+        if computerHint then
+            onSoundPlay(computerHint, function()
+                teleportToSeat("ComputerChair")
+            end)
         end
     end,
     SectionParent = badgeSection
