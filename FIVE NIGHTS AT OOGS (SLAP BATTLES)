@@ -1,0 +1,105 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local window = Rayfield:CreateWindow({
+    Name = "FIVE NIGHTS AT OOGS - Alpha Hax",
+    LoadingTitle = "Loading Assets..",
+    LoadingSubtitle = "Created By Zale",
+    ConfigurationSaving = {
+        Enabled = false,
+        FileName = "Sirius"
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "Zale's Key System",
+        Subtitle = "Enter Your Key",
+        Note = "Rate The Features",
+        FileName = "Sirius",
+        SaveKey = false,
+        Key = "2025"
+    }
+})
+
+local clockTab = window:CreateTab("Clock")
+local badgeSection = clockTab:CreateSection("Badge")
+
+local autoClockButton = clockTab:CreateButton({
+    Name = "Auto Get Clock",
+    SectionParent = badgeSection,
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local character = player.Character or player.CharacterAdded:Wait()
+
+        local cellar = workspace:FindFirstChild("CellarBasement")
+        if cellar then
+            local prompt = cellar:FindFirstChildWhichIsA("ProximityPrompt", true)
+            if prompt then
+                fireproximityprompt(prompt)
+            end
+        end
+
+        task.wait(0.5)
+
+        local furnitureFolder = workspace:FindFirstChild("Furniture")
+        if furnitureFolder then
+            local basketballs = furnitureFolder:FindFirstChild("jorgisBasketballs")
+            if basketballs then
+                local bball = basketballs:FindFirstChild("B-Ball")
+                if bball then
+                    local clickDetector = bball:FindFirstChildWhichIsA("ClickDetector", true)
+                    if clickDetector then
+                        fireclickdetector(clickDetector)
+                    end
+                end
+            end
+        end
+
+        task.wait(0.5)
+
+        if furnitureFolder then
+            local dresser = furnitureFolder:FindFirstChild("parentsDresser")
+            if dresser then
+                local drawer = dresser:FindFirstChild("Drawer")
+                if drawer then
+                    local interactive = drawer:FindFirstChild("Interactive")
+                    if interactive then
+                        local clickDetector = interactive:FindFirstChildWhichIsA("ClickDetector", true)
+                        if clickDetector then
+                            fireclickdetector(clickDetector)
+                        end
+                    end
+                end
+            end
+        end
+
+        task.wait(0.5)
+
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack then
+            local keyTool = backpack:FindFirstChild("Key")
+            if keyTool then
+                local humanoid = character:FindFirstChildWhichIsA("Humanoid")
+                if humanoid then
+                    humanoid:EquipTool(keyTool)
+                end
+            end
+        end
+
+        task.wait(0.5)
+
+        if furnitureFolder then
+            local finalDoor = furnitureFolder:FindFirstChild("finalDoor")
+            if finalDoor then
+                local base1 = finalDoor:FindFirstChild("Base")
+                if base1 then
+                    local base2 = base1:FindFirstChild("Base")
+                    if base2 and base2:IsA("BasePart") then
+                        local hrp = character:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            hrp.CFrame = base2.CFrame
+                        end
+                    end
+                end
+            end
+        end
+    end
+})
