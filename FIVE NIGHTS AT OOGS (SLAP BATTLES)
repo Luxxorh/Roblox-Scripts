@@ -22,83 +22,101 @@ local window = Rayfield:CreateWindow({
 local clockTab = window:CreateTab("Clock")
 local badgeSection = clockTab:CreateSection("Badge")
 
+local player = game.Players.LocalPlayer
+
+local function fireClick(path)
+    local cd = path and path:FindFirstChildOfClass("ClickDetector")
+    if cd then fireclickdetector(cd) end
+end
+
+local function firePrompt(path)
+    local prompt = path and path:FindFirstChildOfClass("ProximityPrompt")
+    if prompt then fireproximityprompt(prompt) end
+end
+
+local function teleportTo(path)
+    if path then player.Character:PivotTo(path.CFrame) end
+end
+
 clockTab:CreateButton({
     Name = "Auto Get Clock",
     SectionParent = badgeSection,
     Callback = function()
-        local player = game.Players.LocalPlayer
-        local character = player.Character or player.CharacterAdded:Wait()
+        task.spawn(function()
+            local notePart, clickDetector
+            repeat
+                wait()
+                notePart = workspace:FindFirstChild("Note")
+                if notePart then
+                    clickDetector = notePart:FindFirstChildOfClass("ClickDetector")
+                    if clickDetector then fireclickdetector(clickDetector) end
+                end
+            until notePart and clickDetector
 
-        local cellar = workspace:FindFirstChild("CellarBasement")
-        if cellar then
-            local prompt = cellar:FindFirstChildWhichIsA("ProximityPrompt", true)
-            if prompt then
-                prompt:InputHoldBegin()
-                task.wait()
-                prompt:InputHoldEnd()
-            end
-        end
+            local noteGui = player:WaitForChild("PlayerGui"):FindFirstChild("NoteGui")
+            if not noteGui then return end
+            local frame = noteGui:FindFirstChild("Frame")
+            if not frame then return end
+            local textLabel = frame:FindFirstChild("TextLabel")
+            if not textLabel or not textLabel.Text then return end
+            local code = textLabel.Text:match("%d%d%d%d")
+            if not code then return end
 
-        task.wait(1)
+            local keypad = workspace:FindFirstChild("Key Pad")
+            if not keypad then return end
+            local digitMap = {
+                ["0"] = "B0", ["1"] = "B1", ["2"] = "B2", ["3"] = "B3",
+                ["4"] = "B4", ["5"] = "B5", ["6"] = "B6", ["7"] = "B7",
+                ["8"] = "B8", ["9"] = "B9"
+            }
 
-        local furnitureFolder = workspace:FindFirstChild("Furniture")
-        if furnitureFolder then
-            local basketballs = furnitureFolder:FindFirstChild("jorgisBasketballs")
-            if basketballs then
-                local bball = basketballs:FindFirstChild("B-Ball")
-                if bball then
-                    local clickDetector = bball:FindFirstChildWhichIsA("ClickDetector", true)
-                    if clickDetector then
-                        fireclickdetector(clickDetector)
-                    end
+            for digit in code:gmatch(".") do
+                local partName = digitMap[digit]
+                local part = keypad:FindFirstChild(partName)
+                if part then
+                    fireClick(part)
+                    task.wait(0.3)
                 end
             end
-        end
 
-        task.wait(1)
+            local enterPart = keypad:FindFirstChild("Enter")
+            if enterPart then
+                fireClick(enterPart)
+            end
 
-        if furnitureFolder then
-            local dresser = furnitureFolder:FindFirstChild("parentsDresser")
+            task.wait(0.4)
+            fireClick(workspace:FindFirstChild("Hatch") and workspace.Hatch:FindFirstChild("Door"))
+
+            task.wait(0.5)
+            teleportTo(workspace:FindFirstChild("CellarBasement") and workspace.CellarBasement:FindFirstChild("Generator"))
+
+            task.wait(0.4)
+            firePrompt(workspace:FindFirstChild("CellarBasement") and workspace.CellarBasement:FindFirstChild("Generator"))
+
+            task.wait(0.4)
+            fireClick(workspace:FindFirstChild("CellarBasement") and workspace.CellarBasement:FindFirstChild("BackHatch") and workspace.CellarBasement.BackHatch:FindFirstChild("Door"))
+
+            task.wait(0.3)
+            fireClick(workspace:FindFirstChild("PocketWatch") and workspace.PocketWatch:FindFirstChild("Part"))
+
+            task.wait(0.3)
+            local dresser = workspace:FindFirstChild("Furniture") and workspace.Furniture:FindFirstChild("parentsDresser")
             if dresser then
-                local drawer = dresser:FindFirstChild("Drawer")
-                if drawer then
-                    local interactive = drawer:FindFirstChild("Interactive")
-                    if interactive then
-                        local clickDetector = interactive:FindFirstChildWhichIsA("ClickDetector", true)
-                        if clickDetector then
-                            fireclickdetector(clickDetector)
+                local handlePart
+                repeat
+                    wait()
+                    for _, drawerModel in ipairs(dresser:GetChildren()) do
+                        if drawerModel:IsA("Model") and drawerModel.Name == "Drawer" then
+                            handlePart = drawerModel:FindFirstChild("Handle")
+                            if handlePart then break end
                         end
                     end
-                end
+                until handlePart
+                fireClick(handlePart)
             end
-        end
 
-        task.wait(1)
-
-        local backpack = player:FindFirstChild("Backpack")
-        if backpack then
-            local tool = backpack:FindFirstChildWhichIsA("Tool")
-            if tool then
-                tool.Parent = character
-            end
-        end
-
-        task.wait(0.5)
-
-        if furnitureFolder then
-            local finalDoor = furnitureFolder:FindFirstChild("finalDoor")
-            if finalDoor then
-                local base1 = finalDoor:FindFirstChild("Base")
-                if base1 then
-                    local base2 = base1:FindFirstChild("Base")
-                    if base2 and base2:IsA("BasePart") then
-                        local hrp = character:FindFirstChild("HumanoidRootPart")
-                        if hrp then
-                            hrp.CFrame = base2.CFrame
-                        end
-                    end
-                end
-            end
-        end
+            task.wait(0.5)
+            teleportTo(workspace:FindFirstChild("Furniture") and workspace.Furniture:FindFirstChild("finalDoor") and workspace.Furniture.finalDoor:FindFirstChild("Base") and workspace.Furniture.finalDoor.Base:FindFirstChild("Base"))
+        end)
     end
 })
