@@ -1,0 +1,98 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local window = Rayfield:CreateWindow({
+    Name = "Day In A Life Of A Small Roblox Developer - Alpha Hax",
+    LoadingTitle = "Loading Assets..",
+    LoadingSubtitle = "Created By Zale",
+    ConfigurationSaving = {
+        Enabled = false,
+        FileName = "Sirius"
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "Zale's Key System",
+        Subtitle = "Enter Your Key",
+        Note = "Rate The Features",
+        FileName = "Sirius",
+        SaveKey = false,
+        Key = "2025"
+    }
+})
+
+local metaverseTab = window:CreateTab("Metaverse")
+local badgeSection = metaverseTab:CreateSection("Badge")
+
+local function fireClickDetector(part)
+    local clickDetector = part:FindFirstChildOfClass("ClickDetector")
+    if clickDetector then
+        fireclickdetector(clickDetector)
+    end
+end
+
+local function equipTool(toolName)
+    local player = game.Players.LocalPlayer
+    local tool = player.Backpack:FindFirstChild(toolName)
+    if tool then
+        tool.Parent = player.Character
+    end
+end
+
+local function simulateClick()
+    local vim = game:GetService("VirtualInputManager")
+    vim:SendMouseButtonEvent(500, 500, 0, true, game, 1)
+    vim:SendMouseButtonEvent(500, 500, 0, false, game, 1)
+end
+
+metaverseTab:CreateButton({
+    Name = "Auto Get Metaverse",
+    Callback = function()
+        local kitchen = workspace:FindFirstChild("Kitchen")
+        if kitchen then
+            local fridge = kitchen:FindFirstChild("Fridge")
+            if fridge then
+                local grantAward = fridge:FindFirstChild("GrantAward")
+                if grantAward then
+                    fireClickDetector(grantAward)
+                end
+            end
+        end
+
+        task.wait(3)
+
+        local microwave = workspace:FindFirstChild("Microwave")
+        if microwave then
+            local hitBox = microwave:FindFirstChild("HitBox")
+            if hitBox then
+                fireClickDetector(hitBox)
+                task.wait(3)
+                fireClickDetector(hitBox)
+            end
+        end
+
+        local couch = workspace:FindFirstChild("Couch")
+        if couch then
+            for _, part in pairs(couch:GetDescendants()) do
+                if part:IsA("Seat") and part:FindFirstChild("SeatWeld") then
+                    game.Players.LocalPlayer.Character:MoveTo(part.Position)
+                    break
+                end
+            end
+        end
+
+        equipTool("Brewzucki")
+        simulateClick()
+
+        task.wait(3)
+
+        equipTool("Medium Rare Chicken")
+
+        local basementTable = workspace:FindFirstChild("BasementTable")
+        if basementTable then
+            local hitBox = basementTable:FindFirstChild("HitBox")
+            if hitBox then
+                fireClickDetector(hitBox)
+            end
+        end
+    end,
+    SectionParent = badgeSection
+})
