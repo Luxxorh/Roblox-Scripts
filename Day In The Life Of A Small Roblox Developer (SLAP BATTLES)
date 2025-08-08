@@ -78,23 +78,18 @@ end
 metaverseTab:CreateButton({
     Name = "Auto Get Metaverse",
     Callback = function()
-        local soundGroup = SoundService:FindFirstChild("TenVoiceLines")
-        if not soundGroup then return end
-
-        local openFridgeHint = soundGroup:FindFirstChild("OpenFridgeHint")
-        local microwaveHint = soundGroup:FindFirstChild("MicrowaveHint")
-        local drinkBrewzuckiHint = soundGroup:FindFirstChild("DrinkBrewzuckiHint")
-        local basementDoorHint = soundGroup:FindFirstChild("BasementDoorHint")
-        local computerHint = soundGroup:FindFirstChild("ComputerHint")
-
-        if openFridgeHint then
-            onSoundPlay(openFridgeHint, function()
-                local kitchen = Workspace:FindFirstChild("Kitchen")
-                local fridge = kitchen and kitchen:FindFirstChild("Fridge")
-                local hitBox = fridge and fridge:FindFirstChild("HitBox")
-                if hitBox then fireClickDetector(hitBox) end
-            end)
+        local kitchen = Workspace:FindFirstChild("Kitchen")
+        local fridge = kitchen and kitchen:FindFirstChild("Fridge")
+        local hitBox = fridge and fridge:FindFirstChild("HitBox")
+        if hitBox then
+            fireClickDetector(hitBox)
         end
+
+        local soundGroup = SoundService:FindFirstChild("TenVoiceLines")
+        local microwaveHint = soundGroup and soundGroup:FindFirstChild("MicrowaveHint")
+        local drinkBrewzuckiHint = soundGroup and soundGroup:FindFirstChild("DrinkBrewzuckiHint")
+        local basementDoorHint = soundGroup and soundGroup:FindFirstChild("BasementDoorHint")
+        local computerHint = soundGroup and soundGroup:FindFirstChild("ComputerHint")
 
         if microwaveHint then
             onSoundPlay(microwaveHint, function()
@@ -151,7 +146,7 @@ metaverseTab:CreateButton({
 
                     if suggestionsQTE and recyclingBin then
                         for _, child in pairs(suggestionsQTE:GetChildren()) do
-                            if child:IsA("Frame") and string.find(child.Name, "Popup_") then
+                            if string.find(child.Name, "Popup_") then
                                 child.Position = recyclingBin.Position
                             end
                         end
