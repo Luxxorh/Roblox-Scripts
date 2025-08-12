@@ -19,52 +19,44 @@ local window = Rayfield:CreateWindow({
     }
 })
 
-local generatorsTab = window:CreateTab("Generators", 4483362458)
+local generatorsTab = window:CreateTab("Generators")
 local generatorsSection = generatorsTab:CreateSection("Generators")
 
-_G.AutoCompleteGenerators = false
+_G.AutoGeneratorsEnabled = false
+local generatorInterval = 7
 
-local function getClosestGenerator()
+local function findNearestGenerator()
     local player = game.Players.LocalPlayer
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return nil end
+    local character = player.Character
+    if not character then return nil end
 
-    local mapFolder = game.Workspace:FindFirstChild("Map")
-    if not mapFolder then return nil end
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return nil end
 
-    local ingameFolder = mapFolder:FindFirstChild("Ingame")
-    if not ingameFolder then return nil end
+    local generatorFolder = workspace:WaitForChild("Map"):WaitForChild("Ingame"):WaitForChild("Map")
+    local nearest, minDistance = nil, math.huge
 
-    local closest
-    local shortestDistance = math.huge
-
-    for _, obj in pairs(ingameFolder:GetChildren()) do
-        if obj.Name == "Generator" and obj:IsA("Model") and obj:FindFirstChild("PrimaryPart") then
-            local distance = (hrp.Position - obj.PrimaryPart.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                closest = obj
+    for _, obj in pairs(generatorFolder:GetChildren()) do
+        if obj.Name == "Generator" and obj:FindFirstChild("Remotes") then
+            local distance = (rootPart.Position - obj:GetPivot().Position).Magnitude
+            if distance < minDistance then
+                minDistance = distance
+                nearest = obj
             end
         end
     end
 
-    return closest
+    return nearest
 end
 
-local function autoCompleteLoop()
+local function startGeneratorAutoComplete()
     spawn(function()
-        local hasWaited = false
-        while _G.AutoCompleteGenerators do
-            local player = game.Players.LocalPlayer
-            local puzzleUI = player:FindFirstChild("PlayerGui"):FindFirstChild("PuzzleUI")
+        while _G.AutoGeneratorsEnabled do
+            local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+            local puzzleUI = playerGui:FindFirstChild("PuzzleUI")
 
             if puzzleUI then
-                if not hasWaited then
-                    wait(7)
-                    hasWaited = true
-                end
-
-                local generator = getClosestGenerator()
+                local generator = findNearestGenerator()
                 if generator then
                     local remotes = generator:FindFirstChild("Remotes")
                     local remoteEvent = remotes and remotes:FindFirstChild("RE")
@@ -72,11 +64,9 @@ local function autoCompleteLoop()
                         remoteEvent:FireServer()
                     end
                 end
-            else
-                hasWaited = false
             end
 
-            wait(7)
+            wait(generatorInterval)
         end
     end)
 end
@@ -86,20 +76,17 @@ generatorsTab:CreateToggle({
     CurrentValue = false,
     SectionParent = generatorsSection,
     Callback = function(state)
-        _G.AutoCompleteGenerators = state
+        _G.AutoGeneratorsEnabled = state
+
+        Rayfield:Notify({
+            Title = "Generators",
+            Content = state and "Auto Generators Enabled" or "Auto Generators Disabled",
+            Duration = 3,
+            Image = 4483362458
+        })
+
         if state then
-            Rayfield:Notify({
-                Title = "Success!",
-                Content = "Auto Complete Generators Enabled!",
-                Duration = 5
-            })
-            autoCompleteLoop()
-        else
-            Rayfield:Notify({
-                Title = "Success!",
-                Content = "Auto Complete Generators Disabled!",
-                Duration = 5
-            })
+            startGeneratorAutoComplete()
         end
     end
 })
