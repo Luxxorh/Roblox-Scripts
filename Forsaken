@@ -79,8 +79,8 @@ generatorsTab:CreateToggle({
         _G.AutoGeneratorsEnabled = state
 
         Rayfield:Notify({
-            Title = "Generators",
-            Content = state and "Auto Generators Enabled" or "Auto Generators Disabled",
+            Title = "Success!",
+            Content = state and "Auto Complete Generators Enabled!" or "Auto Complete Generators Disabled!",
             Duration = 3,
             Image = 4483362458
         })
