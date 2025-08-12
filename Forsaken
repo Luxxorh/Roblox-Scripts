@@ -19,7 +19,6 @@ local window = Rayfield:CreateWindow({
     }
 })
 
-local generatorsTab = window:CreateTab("Generators")
 local generatorsSection = generatorsTab:CreateSection("Generators")
 
 _G.AutoGeneratorsEnabled = false
@@ -79,14 +78,95 @@ generatorsTab:CreateToggle({
         _G.AutoGeneratorsEnabled = state
 
         Rayfield:Notify({
-            Title = "Success!",
-            Content = state and "Auto Complete Generators Enabled!" or "Auto Complete Generators Disabled!",
+            Title = "Auto Generator",
+            Content = state and "Auto Complete Enabled" or "Auto Complete Disabled",
             Duration = 3,
             Image = 4483362458
         })
 
         if state then
             startGeneratorAutoComplete()
+        end
+    end
+})
+
+local espSection = generatorsTab:CreateSection("ESP")
+
+_G.ESPGeneratorsEnabled = false
+local activeHighlights = {}
+local espLoops = {}
+
+local function startESPGenerators()
+    local mapFolder = workspace:FindFirstChild("Map")
+    if not mapFolder then return end
+
+    local ingameFolder = mapFolder:FindFirstChild("Ingame")
+    if not ingameFolder then return end
+
+    for _, obj in pairs(ingameFolder:GetChildren()) do
+        if obj.Name == "Generator" and obj:IsA("Model") then
+            local progress = obj:FindFirstChild("Progress")
+            if progress and progress:IsA("BoolValue") then
+                -- Add Highlight
+                local highlight = Instance.new("Highlight")
+                highlight.Adornee = obj
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.Parent = obj
+                activeHighlights[obj] = highlight
+
+                -- Start monitoring loop
+                local loop = coroutine.create(function()
+                    while _G.ESPGeneratorsEnabled do
+                        if progress.Value == true then
+                            if activeHighlights[obj] then
+                                activeHighlights[obj]:Destroy()
+                                activeHighlights[obj] = nil
+                            end
+                            break
+                        end
+                        task.wait()
+                    end
+                end)
+
+                coroutine.resume(loop)
+                espLoops[obj] = loop
+            end
+        end
+    end
+end
+
+local function stopESPGenerators()
+    for obj, highlight in pairs(activeHighlights) do
+        if highlight then
+            highlight:Destroy()
+        end
+    end
+    activeHighlights = {}
+
+    for obj, loop in pairs(espLoops) do
+        espLoops[obj] = nil
+    end
+end
+
+generatorsTab:CreateToggle({
+    Name = "ESP Generators",
+    CurrentValue = false,
+    SectionParent = espSection,
+    Callback = function(state)
+        _G.ESPGeneratorsEnabled = state
+
+        Rayfield:Notify({
+            Title = "ESP Toggle",
+            Content = state and "ESP Generators Enabled" or "ESP Generators Disabled",
+            Duration = 3,
+            Image = 4483362458
+        })
+
+        if state then
+            startESPGenerators()
+        else
+            stopESPGenerators()
         end
     end
 })
