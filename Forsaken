@@ -19,6 +19,8 @@ local window = Rayfield:CreateWindow({
     }
 })
 
+local generatorsTab = window:CreateTab("Generators")
+
 local generatorsSection = generatorsTab:CreateSection("Generators")
 
 _G.AutoGeneratorsEnabled = false
@@ -78,8 +80,8 @@ generatorsTab:CreateToggle({
         _G.AutoGeneratorsEnabled = state
 
         Rayfield:Notify({
-            Title = "Auto Generator",
-            Content = state and "Auto Complete Enabled" or "Auto Complete Disabled",
+            Title = "Success!",
+            Content = state and "Auto Complete Generators Enabled!" or "Auto Complete Generators Disabled!",
             Duration = 3,
             Image = 4483362458
         })
@@ -155,8 +157,8 @@ generatorsTab:CreateToggle({
         _G.ESPGeneratorsEnabled = state
 
         Rayfield:Notify({
-            Title = "ESP Toggle",
-            Content = state and "ESP Generators Enabled" or "ESP Generators Disabled",
+            Title = "Success!",
+            Content = state and "ESP Generators Enabled!" or "ESP Generators Disabled!",
             Duration = 3,
             Image = 4483362458
         })
