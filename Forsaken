@@ -19,321 +19,83 @@ local window = Rayfield:CreateWindow({
     }
 })
 
-local generatorsTab = window:CreateTab("Generators")
+local generatorsTab = window:CreateTab("Generators", 4483362458)
 local generatorsSection = generatorsTab:CreateSection("Generators")
 
-local function findNearestGenerator()
+local autoCompleteEnabled = false
+local autoCompleteThread
+
+local function getClosestGenerator()
     local player = game.Players.LocalPlayer
-    local character = player.Character
-    if not character then return nil end
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
-    if not rootPart then return nil end
-    local generators = workspace:WaitForChild("Map"):WaitForChild("Ingame"):WaitForChild("Map"):GetChildren()
-    local nearest = nil
-    local minDistance = math.huge
-    for _, obj in pairs(generators) do
-        if obj.Name == "Generator" and obj:FindFirstChild("Remotes") then
-            local distance = (rootPart.Position - obj:GetPivot().Position).Magnitude
-            if distance < minDistance then
-                minDistance = distance
-                nearest = obj
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    local mapFolder = game.Workspace:FindFirstChild("Map")
+    if not mapFolder then return nil end
+
+    local ingameFolder = mapFolder:FindFirstChild("Ingame")
+    if not ingameFolder then return nil end
+
+    local closest
+    local shortestDistance = math.huge
+
+    for _, obj in pairs(ingameFolder:GetChildren()) do
+        if obj.Name == "Generator" and obj:IsA("Model") and obj:FindFirstChild("PrimaryPart") then
+            local distance = (hrp.Position - obj.PrimaryPart.Position).Magnitude
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closest = obj
             end
         end
     end
-    return nearest
+
+    return closest
 end
 
-local function startGeneratorAutoComplete()
-    spawn(function()
-        while _G.AutoGeneratorsEnabled do
-            local playerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-            if playerGui:FindFirstChild("PuzzleUI") then
-                local generator = findNearestGenerator()
+local function autoCompleteGenerators()
+    autoCompleteThread = coroutine.create(function()
+        while autoCompleteEnabled do
+            local player = game.Players.LocalPlayer
+            local puzzleUI = player:WaitForChild("PlayerGui"):FindFirstChild("PuzzleUI")
+
+            if puzzleUI then
+                local generator = getClosestGenerator()
                 if generator then
-                    generator:WaitForChild("Remotes"):WaitForChild("RE"):FireServer()
+                    local remotes = generator:FindFirstChild("Remotes")
+                    if remotes and remotes:FindFirstChild("RE") then
+                        wait(7)
+                        while autoCompleteEnabled and player.PlayerGui:FindFirstChild("PuzzleUI") do
+                            remotes.RE:FireServer()
+                            wait(7)
+                        end
+                    end
                 end
             end
-            wait(3.75)
+            wait(1)
         end
     end)
+    coroutine.resume(autoCompleteThread)
 end
 
-local autoCompleteToggle = generatorsTab:CreateToggle({
+generatorsTab:CreateToggle({
     Name = "Auto Complete Generators",
     CurrentValue = false,
-    Flag = "AutoGenerators",
     SectionParent = generatorsSection,
-    Callback = function(value)
-        _G.AutoGeneratorsEnabled = value
-        if value then
+    Callback = function(state)
+        autoCompleteEnabled = state
+        if state then
             Rayfield:Notify({
-                Title = "Generators",
-                Content = "Auto Generators Enabled",
-                Duration = 3,
-                Image = 4483362458
+                Title = "Success!",
+                Content = "Auto Complete Generators Enabled!",
+                Duration = 5
             })
-            startGeneratorAutoComplete()
+            autoCompleteGenerators()
         else
             Rayfield:Notify({
-                Title = "Generators",
-                Content = "Auto Generators Disabled",
-                Duration = 3,
-                Image = 4483362458
+                Title = "Success!",
+                Content = "Auto Complete Generators Disabled!",
+                Duration = 5
             })
         end
     end
 })
-
-local espSection = generatorsTab:CreateSection("ESP")
-
-local function getGenerators()
-    local generators = {}
-    local success, map = pcall(function() return workspace:WaitForChild("Map") end)
-    if not success then return generators end
-    local inGame = map:FindFirstChild("Ingame")
-    if not inGame then return generators end
-    local mapModel = inGame:FindFirstChild("Map")
-    if not mapModel then return generators end
-    for _, obj in pairs(mapModel:GetChildren()) do
-        if obj.Name == "Generator" then
-            table.insert(generators, obj)
-        end
-    end
-    return generators
-end
-
-local function monitorProgress(generator)
-    if not generator or not generator.Parent then return end
-    local progress = generator:FindFirstChild("Progress")
-    if not progress or not progress:IsA("NumberValue") then return end
-    while _G.AutoHighlightEnabled and generator.Parent do
-        if progress.Value == 100 then
-            local highlight = generator:FindFirstChildOfClass("Highlight")
-            if highlight then
-                highlight:Destroy()
-            end
-            break
-        end
-        wait()
-    end
-end
-
-local function applyHighlight(generator)
-    if not generator or generator:FindFirstChildOfClass("Highlight") then return end
-    local progress = generator:FindFirstChild("Progress")
-    if not progress or not progress:IsA("NumberValue") then return end
-    if progress.Value < 100 then
-        local highlight = Instance.new("Highlight")
-        highlight.FillColor = Color3.fromRGB(0, 255, 0)
-        highlight.OutlineColor = Color3.fromRGB(0, 255, 0)
-        highlight.Parent = generator
-        spawn(function() monitorProgress(generator) end)
-    end
-end
-
-local function clearHighlights()
-    for _, generator in pairs(getGenerators()) do
-        local highlight = generator:FindFirstChildOfClass("Highlight")
-        if highlight then
-            highlight:Destroy()
-        end
-    end
-end
-
-local function startHighlighting()
-    spawn(function()
-        while _G.AutoHighlightEnabled do
-            for _, generator in pairs(getGenerators()) do
-                if not _G.AutoHighlightEnabled then break end
-                applyHighlight(generator)
-            end
-            wait()
-        end
-    end)
-end
-
-local autoHighlightToggle = generatorsTab:CreateToggle({
-    Name = "Auto Highlight Generators",
-    CurrentValue = false,
-    Flag = "AutoHighlight",
-    SectionParent = espSection,
-    Callback = function(value)
-        _G.AutoHighlightEnabled = value
-        if value then
-            Rayfield:Notify({
-                Title = "ESP",
-                Content = "Auto Highlight Generators Enabled",
-                Duration = 3,
-                Image = 4483362458
-            })
-            startHighlighting()
-        else
-            Rayfield:Notify({
-                Title = "ESP",
-                Content = "Auto Highlight Generators Disabled",
-                Duration = 3,
-                Image = 4483362458
-            })
-            clearHighlights()
-        end
-    end
-})
-
-local playersTab = window:CreateTab("Players")
-
-local localPlayerSection = playersTab:CreateSection("LocalPlayer")
-
-local infStaminaToggle = playersTab:CreateToggle({
-    Name = "Inf Stamina (Applies To You)",
-    CurrentValue = false,
-    Flag = "InfStamina",
-    SectionParent = localPlayerSection,
-    Callback = function(value)
-        _G.InfStaminaEnabled = value
-        if value then
-            Rayfield:Notify({
-                Title = "Local Player",
-                Content = "Infinite Stamina Enabled",
-                Duration = 3,
-                Image = 4483362458
-            })
-            spawn(function()
-                local Sprinting = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting)
-                while _G.InfStaminaEnabled do
-                    Sprinting.StaminaLossDisabled = true
-                    Sprinting.StaminaLoss = 0
-                    if Sprinting.__staminaChangedEvent then
-                        Sprinting.__staminaChangedEvent:Fire(Sprinting.Stamina)
-                    end
-                    wait()
-                end
-                if Sprinting then
-                    Sprinting.StaminaLossDisabled = false
-                end
-            end)
-        else
-            Rayfield:Notify({
-                Title = "Local Player",
-                Content = "Infinite Stamina Disabled",
-                Duration = 3,
-                Image = 4483362458
-            })
-        end
-    end
-})
-
-local playersEspSection = playersTab:CreateSection("ESP")
-
-local function getPlayerRole()
-    local playersFolder = workspace:FindFirstChild("Players")
-    if not playersFolder then return nil end
-    local localPlayerName = game.Players.LocalPlayer.Name
-    local killersFolder = playersFolder:FindFirstChild("Killers")
-    if killersFolder then
-        for _, model in pairs(killersFolder:GetChildren()) do
-            if model:IsA("Model") and model:GetAttribute("Username") == localPlayerName then
-                return "killer"
-            end
-        end
-    end
-    local survivorsFolder = playersFolder:FindFirstChild("Survivors")
-    if survivorsFolder then
-        for _, model in pairs(survivorsFolder:GetChildren()) do
-            if model:IsA("Model") and model:GetAttribute("Username") == localPlayerName then
-                return "survivor"
-            end
-        end
-    end
-    return nil
-end
-
-local function getEnemyModels()
-    local enemies = {}
-    local playersFolder = workspace:FindFirstChild("Players")
-    if not playersFolder then return enemies end
-    local role = getPlayerRole()
-    local localPlayerName = game.Players.LocalPlayer.Name
-    if role == "killer" then
-        local survivorsFolder = playersFolder:FindFirstChild("Survivors")
-        if survivorsFolder then
-            for _, model in pairs(survivorsFolder:GetChildren()) do
-                if model:IsA("Model") and model:GetAttribute("Username") and model:GetAttribute("Username") ~= localPlayerName then
-                    table.insert(enemies, {model = model, isKiller = false})
-                end
-            end
-        end
-    elseif role == "survivor" then
-        local killersFolder = playersFolder:FindFirstChild("Killers")
-        if killersFolder then
-            for _, model in pairs(killersFolder:GetChildren()) do
-                if model:IsA("Model") and model:GetAttribute("Username") and model:GetAttribute("Username") ~= localPlayerName then
-                    table.insert(enemies, {model = model, isKiller = true})
-                end
-            end
-        end
-    end
-    return enemies
-end
-
-local function applyPlayerHighlight(model, isKiller)
-    if not model or not model.Parent then return end
-    local highlight = model:FindFirstChildOfClass("Highlight") or Instance.new("Highlight")
-    highlight.FillColor = isKiller and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(255, 165, 0)
-    highlight.OutlineColor = isKiller and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(200, 100, 0)
-    highlight.Parent = model
-end
-
-local function clearPlayerHighlights()
-    local playersFolder = workspace:FindFirstChild("Players")
-    if not playersFolder then return end
-    for _, folderName in pairs({"Survivors", "Killers"}) do
-        local folder = playersFolder:FindFirstChild(folderName)
-        if folder then
-            for _, model in pairs(folder:GetChildren()) do
-                if model:FindFirstChildOfClass("Highlight") then
-                    model:FindFirstChildOfClass("Highlight"):Destroy()
-                end
-            end
-        end
-    end
-end
-
-local function updateEnemyHighlights()
-    while _G.AutoHighlightPlayersEnabled do
-        for _, enemy in pairs(getEnemyModels()) do
-            if enemy.model.Parent then
-                applyPlayerHighlight(enemy.model, enemy.isKiller)
-            end
-        end
-        wait()
-    end
-end
-
-local autoHighlightPlayersToggle = playersTab:CreateToggle({
-    Name = "Auto Highlight Enemies/Survivors (Depends On Role)",
-    CurrentValue = false,
-    Flag = "AutoHighlightPlayers",
-    SectionParent = playersEspSection,
-    Callback = function(value)
-        _G.AutoHighlightPlayersEnabled = value
-        if value then
-            Rayfield:Notify({
-                Title = "Player ESP",
-                Content = "Enemy Highlighting Enabled",
-                Duration = 3,
-                Image = 4483362458
-            })
-            spawn(updateEnemyHighlights)
-        else
-            Rayfield:Notify({
-                Title = "Player ESP",
-                Content = "Enemy Highlighting Disabled",
-                Duration = 3,
-                Image = 4483362458
-            })
-            clearPlayerHighlights()
-        end
-    end
-})
-
-Rayfield:LoadConfiguration()
