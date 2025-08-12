@@ -107,7 +107,6 @@ local function startESPGenerators()
         if obj.Name == "Generator" and obj:IsA("Model") then
             local progress = obj:FindFirstChild("Progress")
             if progress and progress:IsA("BoolValue") then
-                -- Add Highlight
                 local highlight = Instance.new("Highlight")
                 highlight.Adornee = obj
                 highlight.FillColor = Color3.fromRGB(255, 255, 0)
@@ -115,7 +114,6 @@ local function startESPGenerators()
                 highlight.Parent = obj
                 activeHighlights[obj] = highlight
 
-                -- Start monitoring loop
                 local loop = coroutine.create(function()
                     while _G.ESPGeneratorsEnabled do
                         if progress.Value == true then
