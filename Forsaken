@@ -22,8 +22,7 @@ local window = Rayfield:CreateWindow({
 local generatorsTab = window:CreateTab("Generators", 4483362458)
 local generatorsSection = generatorsTab:CreateSection("Generators")
 
-local autoCompleteEnabled = false
-local autoCompleteThread
+_G.AutoCompleteGenerators = false
 
 local function getClosestGenerator()
     local player = game.Players.LocalPlayer
@@ -52,29 +51,34 @@ local function getClosestGenerator()
     return closest
 end
 
-local function autoCompleteGenerators()
-    autoCompleteThread = coroutine.create(function()
-        while autoCompleteEnabled do
+local function autoCompleteLoop()
+    spawn(function()
+        local hasWaited = false
+        while _G.AutoCompleteGenerators do
             local player = game.Players.LocalPlayer
-            local puzzleUI = player:WaitForChild("PlayerGui"):FindFirstChild("PuzzleUI")
+            local puzzleUI = player:FindFirstChild("PlayerGui"):FindFirstChild("PuzzleUI")
 
             if puzzleUI then
+                if not hasWaited then
+                    wait(7)
+                    hasWaited = true
+                end
+
                 local generator = getClosestGenerator()
                 if generator then
                     local remotes = generator:FindFirstChild("Remotes")
-                    if remotes and remotes:FindFirstChild("RE") then
-                        wait(7)
-                        while autoCompleteEnabled and player.PlayerGui:FindFirstChild("PuzzleUI") do
-                            remotes.RE:FireServer()
-                            wait(7)
-                        end
+                    local remoteEvent = remotes and remotes:FindFirstChild("RE")
+                    if remoteEvent then
+                        remoteEvent:FireServer()
                     end
                 end
+            else
+                hasWaited = false
             end
-            wait(1)
+
+            wait(7)
         end
     end)
-    coroutine.resume(autoCompleteThread)
 end
 
 generatorsTab:CreateToggle({
@@ -82,14 +86,14 @@ generatorsTab:CreateToggle({
     CurrentValue = false,
     SectionParent = generatorsSection,
     Callback = function(state)
-        autoCompleteEnabled = state
+        _G.AutoCompleteGenerators = state
         if state then
             Rayfield:Notify({
                 Title = "Success!",
                 Content = "Auto Complete Generators Enabled!",
                 Duration = 5
             })
-            autoCompleteGenerators()
+            autoCompleteLoop()
         else
             Rayfield:Notify({
                 Title = "Success!",
