@@ -1,0 +1,73 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local window = Rayfield:CreateWindow({
+    Name = "Steal a Brainrot - Alpha Hax",
+    LoadingTitle = "Loading Assets..",
+    LoadingSubtitle = "Created By Luxx",
+    ConfigurationSaving = {
+        Enabled = false,
+        FileName = "Sirius"
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "Luxx's Key System",
+        Subtitle = "Enter Your Key",
+        Note = "Rate The Features",
+        FileName = "Sirius",
+        SaveKey = false,
+        Key = "2025"
+    }
+})
+
+local baseTab = window:CreateTab("Base")
+local yourBaseSection = baseTab:CreateSection("Your Base")
+
+local loopActive = false
+
+baseTab:CreateToggle({
+    Name = "Auto Lock Base",
+    CurrentValue = false,
+    SectionParent = yourBaseSection,
+    Callback = function(state)
+        loopActive = state
+
+        if state then
+            spawn(function()
+                while loopActive do
+                    local plotsFolder = workspace:FindFirstChild("Plots")
+                    if plotsFolder then
+                        for _, plotModel in ipairs(plotsFolder:GetChildren()) do
+                            if plotModel:IsA("Model") then
+                                local plotSign = plotModel:FindFirstChild("PlotSign")
+                                if plotSign and plotSign:IsA("Part") then
+                                    local billboard = plotSign:FindFirstChild("YourBase")
+                                    if billboard and billboard:IsA("BillboardGui") and billboard.Enabled then
+                                        local purchasesFolder = plotModel:FindFirstChild("Purchases")
+                                        if purchasesFolder then
+                                            local plotBlock = purchasesFolder:FindFirstChild("PlotBlock")
+                                            if plotBlock and plotBlock:IsA("Model") then
+                                                local hitbox = plotBlock:FindFirstChild("Hitbox")
+                                                if hitbox and hitbox:IsA("Part") then
+                                                    for _, child in ipairs(hitbox:GetChildren()) do
+                                                        if child:IsA("TouchTransmitter") then
+                                                            firetouchinterest(LocalPlayer.Character.HumanoidRootPart, hitbox, 0)
+                                                            task.wait()
+                                                            firetouchinterest(LocalPlayer.Character.HumanoidRootPart, hitbox, 1)
+                                                        end
+                                                    end
+                                                end
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    task.wait()
+                end
+            end)
+        end
+    end
+})
