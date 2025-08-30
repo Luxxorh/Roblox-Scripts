@@ -1,0 +1,886 @@
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
+local localPlayer = Players.LocalPlayer
+
+local BACKEND_URL = 'https://brainrotss.up.railway.app/brainrots'
+local MAX_JOIN_ATTEMPTS = 3
+local REFRESH_INTERVAL = 0.050
+local SETTINGS_FOLDER = "Eps1llonHub"
+local SETTINGS_FILE = "Eps1llonHub_AutoJoiner_Settings.json"
+
+local autoJoinMode = nil
+local searchActive = false
+local searchTarget = nil
+local moneyFilter = 10000000
+local joinAttempts = {}
+local knownServers = {}
+local lastKnownServerCount = 0
+local filterDropdownOpen = false
+local lastData = ''
+local isMinimized = false
+local isExpanded = false
+local waitingForServer = false
+local scriptStartTime = tick()
+
+local function debugLog(message)
+    print("[AutoJoiner] " .. tostring(message))
+end
+
+local function formatMoney(amount)
+    return "$" .. tostring(amount):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
+end
+
+local function getSettingsPath()
+    return SETTINGS_FOLDER .. "/" .. SETTINGS_FILE
+end
+
+local function ensureFolderAndFile()
+    if makefolder and isfolder and not isfolder(SETTINGS_FOLDER) then
+        makefolder(SETTINGS_FOLDER)
+    end
+
+    local settingsPath = getSettingsPath()
+    if writefile and not isfile(settingsPath) then
+        local defaultSettings = {
+            lastUpdated = 1756597920.3382138,
+            moneyFilter = 1000000
+        }
+        writefile(settingsPath, HttpService:JSONEncode(defaultSettings))
+        return defaultSettings
+    elseif readfile and isfile(settingsPath) then
+        local content = readfile(settingsPath)
+        local decoded = HttpService:JSONDecode(content)
+        return decoded
+    end
+    return nil
+end
+
+local function saveSettings()
+    local settings = {
+        moneyFilter = moneyFilter,
+        lastUpdated = tick()
+    }
+
+    local settingsPath = getSettingsPath()
+    if writefile then
+        local content = HttpService:JSONEncode(settings)
+        writefile(settingsPath, content)
+        debugLog("Saved filter setting: " .. formatMoney(moneyFilter))
+    end
+end
+
+local function loadSettings()
+    local settings = ensureFolderAndFile()
+    if settings and type(settings) == "table" then
+        moneyFilter = settings.moneyFilter or moneyFilter
+        debugLog("Loaded filter setting: " .. formatMoney(moneyFilter))
+        return settings
+    else
+        debugLog("No settings file found, using defaults")
+    end
+    return nil
+end
+
+loadSettings()
+
+local ACCENT_A = Color3.fromRGB(64, 156, 255)
+local ACCENT_B = Color3.fromRGB(0, 204, 204)
+local THEME = {
+    bg = Color3.fromRGB(12, 14, 18),
+    panel = Color3.fromRGB(16, 18, 24),
+    panel2 = Color3.fromRGB(22, 24, 30),
+    text = Color3.fromRGB(230, 235, 240),
+    textDim = Color3.fromRGB(170, 176, 186),
+    accentA = ACCENT_A, accentB = ACCENT_B,
+    btn = Color3.fromRGB(28, 30, 36),
+    btnHover = Color3.fromRGB(36, 38, 46),
+    btnActive = Color3.fromRGB(42, 44, 56),
+    gold = Color3.fromRGB(255, 215, 0),
+    success = Color3.fromRGB(40, 167, 69),
+    successHover = Color3.fromRGB(60, 187, 89),
+    scrollBar = Color3.fromRGB(80, 84, 96),
+    greyBg = Color3.fromRGB(45, 48, 56),
+    dragBase = Color3.fromRGB(210, 214, 218),
+    dragBright = Color3.fromRGB(245, 248, 250),
+    sidebarActive = Color3.fromRGB(35, 38, 46),
+    sidebarHighlight = Color3.fromRGB(64, 156, 255),
+    btnActive = Color3.fromRGB(50, 115, 255)
+}
+
+local function clean(str)
+    return tostring(str or ''):gsub('%+', ''):gsub('^%s(.-)%s*$', '%1')
+end
+
+local function toTitleCase(s)
+    return (s:gsub('(%a)([%w_\']*)', function(first, rest) return first:upper() .. rest:lower() end))
+end
+
+local function parseMoney(moneyStr)
+    if not moneyStr or moneyStr == 'TBA' then return 0 end
+    moneyStr = clean(moneyStr)
+    local num, suffix = moneyStr:match('^%$?([%d%.]+)([MKBT]?)')
+    if not num then return 0 end
+    num = tonumber(num)
+    if not num then return 0 end
+    if suffix == 'B' then return num * 1e9
+    elseif suffix == 'M' then return num * 1e6
+    elseif suffix == 'K' then return num * 1e3
+    elseif suffix == 'T' then return num * 1e12
+    else return num end
+end
+
+local function formatMoney(num)
+    if num == 0 then return "TBA" end
+    if num >= 1000000000 then
+        return string.format("$%.1fB", num / 1000000000)
+    elseif num >= 1000000 then
+        return string.format("$%.1fM", num / 1000000)
+    elseif num >= 1000 then
+        return string.format("$%.0fK", num / 1000)
+    else
+        return "$" .. tostring(num)
+    end
+end
+
+local autoJoinGui = Instance.new('ScreenGui')
+autoJoinGui.Name = 'Eps1llonHub_AutoJoiner'
+autoJoinGui.ResetOnSpawn = false
+autoJoinGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+autoJoinGui.Parent = localPlayer:WaitForChild('PlayerGui')
+
+local guiWidth = 580
+local guiHeight = 340
+
+local rootFrame = Instance.new('Frame')
+rootFrame.Name = 'Root'
+rootFrame.Size = UDim2.new(0, guiWidth, 0, guiHeight)
+rootFrame.Position = UDim2.new(0.5, -guiWidth/2, 0.5, -guiHeight/2)
+rootFrame.BackgroundColor3 = THEME.bg
+rootFrame.BackgroundTransparency = 0.02
+rootFrame.BorderSizePixel = 0
+rootFrame.Active = true
+rootFrame.Draggable = false
+rootFrame.ZIndex = 1
+rootFrame.Parent = autoJoinGui
+
+local rootCorner = Instance.new('UICorner'); rootCorner.CornerRadius = UDim.new(0, 14); rootCorner.Parent = rootFrame
+
+local rootStroke = Instance.new('UIStroke')
+rootStroke.Color = Color3.fromRGB(255, 255, 255)
+rootStroke.Transparency = 0.94
+rootStroke.Thickness = 1
+rootStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+rootStroke.Parent = rootFrame
+
+local OUTSET = 8
+local dragBar = Instance.new('Frame')
+dragBar.Name = 'DragBar'
+dragBar.AnchorPoint = Vector2.new(0.5, 0)
+dragBar.Size = UDim2.new(0.6, 0, 0, 6)
+dragBar.Position = UDim2.new(0.5, 0, 1, OUTSET)
+dragBar.BackgroundColor3 = THEME.dragBase
+dragBar.BackgroundTransparency = 0.55
+dragBar.BorderSizePixel = 0
+dragBar.ZIndex = 5
+dragBar.Parent = rootFrame
+
+local dragCorner = Instance.new('UICorner'); dragCorner.CornerRadius = UDim.new(1, 0); dragCorner.Parent = dragBar
+
+local brandLogo = Instance.new('ImageLabel')
+brandLogo.Name = 'BrandLogo'
+brandLogo.Size = UDim2.new(0, 24, 0, 24)
+brandLogo.Position = UDim2.new(0, 12, 0, 10)
+brandLogo.BackgroundTransparency = 1
+brandLogo.Image = 'rbxassetid://116553067824026'
+brandLogo.ScaleType = Enum.ScaleType.Fit
+brandLogo.ZIndex = 2
+brandLogo.Parent = rootFrame
+
+local brandContainer = Instance.new('Frame')
+brandContainer.Name = 'BrandContainer'
+brandContainer.Size = UDim2.new(0, 300, 0, 32)
+brandContainer.Position = UDim2.new(0, 42, 0, 8)
+brandContainer.BackgroundTransparency = 1
+brandContainer.ZIndex = 2
+brandContainer.Parent = rootFrame
+
+local brandTitlePrimary = Instance.new('TextLabel')
+brandTitlePrimary.Name = 'BrandTitle'
+brandTitlePrimary.Size = UDim2.new(1, 0, 0, 17)
+brandTitlePrimary.BackgroundTransparency = 1
+brandTitlePrimary.Text = 'Eps1llon Hub | Auto Joiner'
+brandTitlePrimary.TextColor3 = THEME.text
+brandTitlePrimary.TextSize = 17
+brandTitlePrimary.Font = Enum.Font.GothamBold
+brandTitlePrimary.TextXAlignment = Enum.TextXAlignment.Left
+brandTitlePrimary.ZIndex = 2
+brandTitlePrimary.Parent = brandContainer
+
+local brandSubtitle = Instance.new('TextLabel')
+brandSubtitle.Name = 'BrandSubtitle'
+brandSubtitle.Size = UDim2.new(1, 0, 0, 13)
+brandSubtitle.Position = UDim2.new(0, 0, 0, 17)
+brandSubtitle.BackgroundTransparency = 1
+brandSubtitle.Text = 'Premium'
+brandSubtitle.TextColor3 = THEME.textDim
+brandSubtitle.TextSize = 11
+brandSubtitle.Font = Enum.Font.GothamSemibold
+brandSubtitle.TextXAlignment = Enum.TextXAlignment.Left
+brandSubtitle.ZIndex = 2
+brandSubtitle.Parent = brandContainer
+
+local minimizeBtn = Instance.new('ImageButton')
+minimizeBtn.Name = 'Minimize'
+minimizeBtn.Size = UDim2.new(0, 20, 0, 20)
+minimizeBtn.Position = UDim2.new(1, -100, 0, 8)
+minimizeBtn.BackgroundTransparency = 1
+minimizeBtn.Image = 'rbxassetid://110574729016386'
+minimizeBtn.ImageColor3 = THEME.textDim
+minimizeBtn.ScaleType = Enum.ScaleType.Fit
+minimizeBtn.ZIndex = 2
+minimizeBtn.Parent = rootFrame
+
+local expandBtn = Instance.new('ImageButton')
+expandBtn.Name = 'Expand'
+expandBtn.Size = UDim2.new(0, 20, 0, 20)
+expandBtn.Position = UDim2.new(1, -70, 0, 8)
+expandBtn.BackgroundTransparency = 1
+expandBtn.Image = 'rbxassetid://137817849385475'
+expandBtn.ImageColor3 = THEME.textDim
+expandBtn.ScaleType = Enum.ScaleType.Fit
+expandBtn.ZIndex = 2
+expandBtn.Parent = rootFrame
+
+local closeBtn = Instance.new('ImageButton')
+closeBtn.Name = 'Close'
+closeBtn.Size = UDim2.new(0, 20, 0, 20)
+closeBtn.Position = UDim2.new(1, -40, 0, 8)
+closeBtn.BackgroundTransparency = 1
+closeBtn.Image = 'rbxassetid://71175513861523'
+closeBtn.ImageColor3 = THEME.textDim
+closeBtn.ScaleType = Enum.ScaleType.Fit
+closeBtn.ZIndex = 2
+closeBtn.Parent = rootFrame
+
+local contentHost = Instance.new('Frame')
+contentHost.Name = 'ContentHost'
+contentHost.Size = UDim2.new(1, -20, 1, -54)
+contentHost.Position = UDim2.new(0, 10, 0, 44)
+contentHost.BackgroundColor3 = THEME.panel
+contentHost.BackgroundTransparency = 0.06
+contentHost.ZIndex = 2
+contentHost.Parent = rootFrame
+
+local contentCorner = Instance.new('UICorner'); contentCorner.CornerRadius = UDim.new(0, 10); contentCorner.Parent = contentHost
+
+local autoJoinPanel = Instance.new('Frame')
+autoJoinPanel.Name = 'AutoJoinPanel'
+autoJoinPanel.Size = UDim2.new(1, -10, 1, -10)
+autoJoinPanel.Position = UDim2.new(0, 5, 0, 5)
+autoJoinPanel.BackgroundColor3 = THEME.panel2
+autoJoinPanel.BackgroundTransparency = 0.06
+autoJoinPanel.ZIndex = 3
+autoJoinPanel.Parent = contentHost
+
+local autoJoinCorner = Instance.new('UICorner'); autoJoinCorner.CornerRadius = UDim.new(0, 10); autoJoinCorner.Parent = autoJoinPanel
+
+local autoJoinFrame = Instance.new('Frame'); autoJoinFrame.Size = UDim2.new(1, -8, 0, 26); autoJoinFrame.Position = UDim2.new(0, 4, 0, 4); autoJoinFrame.BackgroundTransparency = 1; autoJoinFrame.Parent = autoJoinPanel
+local secretBtn = Instance.new('TextButton'); secretBtn.Size = UDim2.new(0.48, 0, 1, 0); secretBtn.BackgroundColor3 = THEME.btn; secretBtn.Text = 'Secret'; secretBtn.TextColor3 = THEME.text; secretBtn.TextSize = 13; secretBtn.Font = Enum.Font.GothamBold; secretBtn.AutoButtonColor = true; secretBtn.Parent = autoJoinFrame
+local secretCorner = Instance.new('UICorner'); secretCorner.CornerRadius = UDim.new(0, 8); secretCorner.Parent = secretBtn
+local godBtn = Instance.new('TextButton'); godBtn.Size = UDim2.new(0.48, 0, 1, 0); godBtn.Position = UDim2.new(0.52, 0, 0, 0); godBtn.BackgroundColor3 = THEME.btn; godBtn.Text = 'Brainrot God'; godBtn.TextColor3 = THEME.text; godBtn.TextSize = 13; godBtn.Font = Enum.Font.GothamBold; godBtn.AutoButtonColor = true; godBtn.Parent = autoJoinFrame
+local godCorner = Instance.new('UICorner'); godCorner.CornerRadius = UDim.new(0, 8); godCorner.Parent = godBtn
+
+local searchFrame = Instance.new('Frame'); searchFrame.Size = UDim2.new(1, -8, 0, 26); searchFrame.Position = UDim2.new(0, 4, 0, 34); searchFrame.BackgroundTransparency = 1; searchFrame.Parent = autoJoinPanel
+local searchInput = Instance.new('Frame'); searchInput.Name = 'SearchInput'; searchInput.Size = UDim2.new(1, -66, 1, 0); searchInput.BackgroundColor3 = THEME.btn; searchInput.Parent = searchFrame
+local searchInputCorner = Instance.new('UICorner'); searchInputCorner.CornerRadius = UDim.new(0, 8); searchInputCorner.Parent = searchInput
+local searchIcon = Instance.new('ImageLabel'); searchIcon.Name='Icon'; searchIcon.Size=UDim2.new(0,14,0,14); searchIcon.Position=UDim2.new(0,8,0.5,-7); searchIcon.BackgroundTransparency=1; searchIcon.Image='rbxassetid://86260290442059'; searchIcon.ImageColor3=THEME.textDim; searchIcon.Parent=searchInput
+local searchBox = Instance.new('TextBox'); searchBox.Size=UDim2.new(1,-36,1,0); searchBox.Position=UDim2.new(0,28,0,0); searchBox.PlaceholderText='Search'; searchBox.Text=''; searchBox.Font=Enum.Font.Gotham; searchBox.TextSize=12; searchBox.BackgroundTransparency=1; searchBox.TextColor3=THEME.text; searchBox.PlaceholderColor3=THEME.textDim; searchBox.ClearTextOnFocus=false; searchBox.Parent=searchInput
+local searchToggle = Instance.new('TextButton'); searchToggle.Size=UDim2.new(0,62,1,0); searchToggle.Position=UDim2.new(1,-62,0,0); searchToggle.BackgroundColor3=THEME.btn; searchToggle.Text='Off'; searchToggle.TextColor3=THEME.text; searchToggle.TextSize=12; searchToggle.Font=Enum.Font.GothamBold; searchToggle.Parent=searchFrame
+local searchToggleCorner = Instance.new('UICorner'); searchToggleCorner.CornerRadius = UDim.new(0, 8); searchToggleCorner.Parent = searchToggle
+
+local filterBtn = Instance.new('TextButton'); filterBtn.Size=UDim2.new(1,-8,0,26); filterBtn.Position=UDim2.new(0,4,0,64); filterBtn.BackgroundColor3=THEME.btn; filterBtn.Text='Filter: ' .. formatMoney(moneyFilter); filterBtn.TextColor3=THEME.text; filterBtn.TextSize=12; filterBtn.Font=Enum.Font.GothamBold; filterBtn.Parent=autoJoinPanel
+local filterBtnCorner = Instance.new('UICorner'); filterBtnCorner.CornerRadius=UDim.new(0,8); filterBtnCorner.Parent=filterBtn
+local dropdownFrame = Instance.new('Frame'); dropdownFrame.Size=UDim2.new(1,-8,0,150); dropdownFrame.Position=UDim2.new(0,4,0,94); dropdownFrame.BackgroundColor3=THEME.panel; dropdownFrame.BorderSizePixel=0; dropdownFrame.Visible=false; dropdownFrame.ZIndex=10; dropdownFrame.Parent=autoJoinPanel
+local dropdownCorner = Instance.new('UICorner'); dropdownCorner.CornerRadius=UDim.new(0,8); dropdownCorner.Parent=dropdownFrame
+local dropdownStroke = Instance.new('UIStroke'); dropdownStroke.Color = Color3.fromRGB(255,255,255); dropdownStroke.Transparency=0.93; dropdownStroke.Thickness=1; dropdownStroke.Parent=dropdownFrame
+
+local scrollContainer = Instance.new('Frame'); scrollContainer.Size=UDim2.new(1,-8,1,-98); scrollContainer.Position=UDim2.new(0,4,0,94); scrollContainer.BackgroundColor3=THEME.panel; scrollContainer.BackgroundTransparency=0.06; scrollContainer.Parent=autoJoinPanel
+local scrollCorner = Instance.new('UICorner'); scrollCorner.CornerRadius = UDim.new(0, 8); scrollCorner.Parent = scrollContainer
+local scroll = Instance.new('ScrollingFrame'); scroll.Name='ServerList'; scroll.Size=UDim2.new(1,-6,1,-6); scroll.Position=UDim2.new(0,3,0,3); scroll.BackgroundTransparency=1; scroll.BorderSizePixel=0; scroll.CanvasSize=UDim2.new(0,0,0,0); scroll.ScrollBarThickness=6; scroll.ScrollBarImageColor3=THEME.scrollBar; scroll.ScrollingDirection=Enum.ScrollingDirection.Y; scroll.Parent=scrollContainer
+local layout = Instance.new('UIListLayout'); layout.SortOrder=Enum.SortOrder.LayoutOrder; layout.Padding=UDim.new(0,6); layout.Parent=scroll
+layout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function() scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 8) end)
+
+local filterOptions = {
+    {text = 'All', value = 0},
+    {text = '1M+', value = 1000000},
+    {text = '5M+', value = 5000000},
+    {text = '10M+', value = 10000000},
+    {text = '50M+', value = 50000000},
+}
+
+local yPos = 4
+for _, option in ipairs(filterOptions) do
+    local optionBtn = Instance.new('TextButton')
+    optionBtn.Size = UDim2.new(1, -8, 0, 28)
+    optionBtn.Position = UDim2.new(0, 4, 0, yPos)
+    optionBtn.BackgroundColor3 = THEME.btn
+    optionBtn.Text = option.text
+    optionBtn.TextColor3 = THEME.text
+    optionBtn.TextSize = 13
+    optionBtn.Font = Enum.Font.Gotham
+    optionBtn.BorderSizePixel = 0
+    optionBtn.ZIndex = 11
+    optionBtn.Parent = dropdownFrame
+
+    local optionCorner = Instance.new('UICorner'); optionCorner.CornerRadius = UDim.new(0, 6); optionCorner.Parent = optionBtn
+
+    optionBtn.MouseEnter:Connect(function() optionBtn.BackgroundColor3 = THEME.btnHover end)
+    optionBtn.MouseLeave:Connect(function() optionBtn.BackgroundColor3 = THEME.btn end)
+
+    optionBtn.Activated:Connect(function()
+        moneyFilter = option.value; 
+        filterBtn.Text = 'Filter: ' .. option.text; 
+        dropdownFrame.Visible = false; 
+        filterDropdownOpen = false;
+        saveSettings()
+        debugLog("Filter set to: " .. formatMoney(moneyFilter))
+    end)
+
+    yPos = yPos + 30
+end
+
+filterBtn.Text = 'Filter: ' .. formatMoney(moneyFilter)
+
+local function setAutoJoin(mode)
+    autoJoinMode = mode
+    if mode == 'Secret' then
+        TweenService:Create(secretBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btnActive, TextColor3 = Color3.fromRGB(248,250,255)}):Play()
+        TweenService:Create(godBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn, TextColor3 = THEME.text}):Play()
+        searchActive = false; searchToggle.Text = 'Off'; searchToggle.BackgroundColor3 = THEME.btn
+        debugLog("Auto-join mode set to Secret")
+    elseif mode == 'God' then
+        TweenService:Create(godBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btnActive, TextColor3 = Color3.fromRGB(248,250,255)}):Play()
+        TweenService:Create(secretBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn, TextColor3 = THEME.text}):Play()
+        searchActive = false; searchToggle.Text = 'Off'; searchToggle.BackgroundColor3 = THEME.btn
+        debugLog("Auto-join mode set to Brainrot God")
+    else
+        TweenService:Create(godBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn, TextColor3 = THEME.text}):Play()
+        TweenService:Create(secretBtn, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn, TextColor3 = THEME.text}):Play()
+        debugLog("Auto-join mode disabled")
+    end
+end
+
+local function processNewServers(servers)
+    if not autoJoinMode then return end
+    
+    local filtered = {}
+    for _, server in ipairs(servers) do
+        local moneyPerSec = server.moneyPerSec and clean(server.moneyPerSec) or '?'
+        local moneyValue = parseMoney(moneyPerSec)
+        if moneyValue >= moneyFilter then 
+            table.insert(filtered, server) 
+        end
+    end
+    
+    table.sort(filtered, function(a, b)
+        local timeA = tonumber(a.lastSeen) or 0
+        local timeB = tonumber(b.lastSeen) or 0
+        return timeA > timeB
+    end)
+    
+    for _, server in ipairs(filtered) do
+        local jobId = clean(server.jobId or server.instanceId)
+        local serverTime = tonumber(server.lastSeen) or 0
+        
+        if serverTime > scriptStartTime then
+
+            if not knownServers[jobId] then
+                knownServers[jobId] = true
+                debugLog("NEW SERVER DETECTED: " .. jobId .. " - Attempting to join immediately...")
+                
+                local attempts = joinAttempts[jobId] or 0
+                if attempts < MAX_JOIN_ATTEMPTS then
+                    local name = clean(server.name)
+                    local petRarity = "Unknown"
+                    
+                    debugLog("Join attempt " .. (attempts + 1) .. "/" .. MAX_JOIN_ATTEMPTS .. " for server: " .. jobId)
+                    
+                    if (autoJoinMode == 'Secret') or (autoJoinMode == 'God') then
+                        local mps = server.moneyPerSec and clean(server.moneyPerSec) or '?'
+                        local mv = parseMoney(mps)
+                        
+                        if mv >= 10000000 then
+                            local placeId = 109983668079237
+                            debugLog("Attempting teleport to high-value server: " .. jobId)
+                            task.spawn(function() 
+                                pcall(function() 
+                                    TeleportService:TeleportToPlaceInstance(placeId, jobId, localPlayer) 
+                                end) 
+                            end)
+                        else
+                            local placeId = tonumber(server.serverId)
+                            if placeId and jobId and jobId ~= '' then 
+                                debugLog("Attempting teleport to regular server: " .. jobId)
+                                task.spawn(function() 
+                                    pcall(function() 
+                                        TeleportService:TeleportToPlaceInstance(placeId, jobId, localPlayer) 
+                                    end) 
+                                end) 
+                            end
+                        end
+                        
+                        joinAttempts[jobId] = attempts + 1
+                        break
+                    end
+                else
+                    debugLog("Server " .. jobId .. " has reached max attempts (" .. MAX_JOIN_ATTEMPTS .. "), skipping...")
+                end
+            end
+        end
+    end
+    
+    if searchActive and searchTarget then
+        for _, server in ipairs(filtered) do
+            local jobId = clean(server.jobId or server.instanceId)
+            local serverTime = tonumber(server.lastSeen) or 0
+            
+            if serverTime > scriptStartTime then
+                if not knownServers[jobId] then
+                    local name = clean(server.name):lower()
+                    if name:find(searchTarget, 1, true) then
+                        knownServers[jobId] = true
+                        debugLog("NEW SEARCH MATCH FOUND: " .. jobId .. " - Searching for '" .. searchTarget .. "'")
+                        
+                        local mps = server.moneyPerSec and clean(server.moneyPerSec) or '?'
+                        local mv = parseMoney(mps)
+                        
+                        if mv >= 10000000 then
+                            local placeId = 109983668079237
+                            debugLog("Attempting teleport to searched high-value server: " .. jobId)
+                            task.spawn(function() 
+                                pcall(function() 
+                                    TeleportService:TeleportToPlaceInstance(placeId, jobId, localPlayer) 
+                                end) 
+                            end)
+                        else
+                            local placeId = tonumber(server.serverId)
+                            if placeId and jobId and jobId ~= '' then 
+                                debugLog("Attempting teleport to searched regular server: " .. jobId)
+                                task.spawn(function() 
+                                    pcall(function() 
+                                        TeleportService:TeleportToPlaceInstance(placeId, jobId, localPlayer) 
+                                    end) 
+                                end) 
+                            end
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function clearGui()
+    for _, child in ipairs(scroll:GetChildren()) do if not child:IsA('UIListLayout') then child:Destroy() end end
+end
+
+local function getBrainrots()
+    local resp
+    
+    if syn and syn.request then 
+        local success, result = pcall(function()
+            return syn.request({
+                Url = BACKEND_URL,
+                Method = 'GET',
+                Headers = {
+                    ["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                }
+            })
+        end)
+        if success and result then
+            resp = result
+        end
+    end
+    
+    if not resp and http and http.request then
+        local success, result = pcall(function()
+            return http.request({
+                Url = BACKEND_URL,
+                Method = 'GET'
+            })
+        end)
+        if success and result then
+            resp = result
+        end
+    end
+    
+    if not resp and request then
+        local success, result = pcall(function()
+            return request({
+                Url = BACKEND_URL,
+                Method = 'GET'
+            })
+        end)
+        if success and result then
+            resp = result
+        end
+    end
+    
+    if not resp and http_request then
+        local success, result = pcall(function()
+            return http_request({
+                Url = BACKEND_URL,
+                Method = 'GET'
+            })
+        end)
+        if success and result then
+            resp = result
+        end
+    end
+    
+    if not resp then
+        local success, result = pcall(function()
+            if syn and syn.request then
+                return syn.request({Url = BACKEND_URL, Method = 'GET'})
+            elseif http and http.request then
+                return http.request({Url = BACKEND_URL, Method = 'GET'})
+            elseif request then
+                return request({Url = BACKEND_URL, Method = 'GET'})
+            elseif http_request then
+                return http_request({Url = BACKEND_URL, Method = 'GET'})
+            end
+        end)
+        if success and result then
+            resp = result
+        end
+    end
+    
+    if resp and resp.StatusCode == 200 then
+        local ok, data = pcall(function() return HttpService:JSONDecode(resp.Body) end)
+        if ok and type(data) == 'table' then
+            return data
+        end
+    end
+    
+    return {}
+end
+
+local function renderServers(servers)
+    clearGui()
+    local filtered = {}
+    for _, server in ipairs(servers) do
+        local moneyPerSec = server.moneyPerSec and clean(server.moneyPerSec) or '?'
+        local moneyValue = parseMoney(moneyPerSec)
+        if moneyValue >= moneyFilter then table.insert(filtered, server) end
+    end
+    
+    table.sort(filtered, function(a, b)
+        local timeA = tonumber(a.lastSeen) or 0
+        local timeB = tonumber(b.lastSeen) or 0
+        return timeA > timeB
+    end)
+    
+    if #filtered == 0 and (autoJoinMode or searchActive) then
+        local waitingMsg = Instance.new('TextLabel')
+        waitingMsg.Size = UDim2.new(1, -16, 0, 50)
+        waitingMsg.Position = UDim2.new(0, 8, 0, 4)
+        waitingMsg.BackgroundTransparency = 1
+        waitingMsg.Text = 'Waiting For New Servers...\n' .. ((autoJoinMode=='Secret' and 'Looking For Secret Pets') or (autoJoinMode=='God' and 'Looking For Brainrot God Pets') or (searchActive and searchTarget and ('Looking For: ' .. toTitleCase(searchBox.Text)) or ''))
+        waitingMsg.TextColor3 = THEME.gold
+        waitingMsg.TextSize = 15
+        waitingMsg.Font = Enum.Font.GothamBold
+        waitingMsg.TextWrapped = true
+        waitingMsg.Parent = scroll
+        waitingForServer = true
+        return
+    elseif #filtered == 0 then
+        local none = Instance.new('TextLabel'); none.Size=UDim2.new(1,0,0,36); none.BackgroundTransparency=1; none.Text='No Servers Found'; none.TextColor3=THEME.textDim; none.TextSize=15; none.Font=Enum.Font.GothamBold; none.Parent=scroll
+        waitingForServer = false; return
+    end
+    waitingForServer = false
+    for _, server in ipairs(filtered) do
+        local rawName = clean(server.name)
+        local name = toTitleCase(rawName)
+        local players = clean(server.players)
+        local moneyPerSec = server.moneyPerSec and clean(server.moneyPerSec) or '?'
+        if moneyPerSec == '' then moneyPerSec = '?' end
+        local entry = Instance.new('Frame'); entry.Size=UDim2.new(1,-6,0,68); entry.BackgroundColor3=THEME.btn; entry.Parent=scroll
+        local entryCorner = Instance.new('UICorner'); entryCorner.CornerRadius = UDim.new(0, 8); entryCorner.Parent = entry
+        local label = Instance.new('TextLabel')
+        label.Size = UDim2.new(1, -85, 1, 0); label.Position = UDim2.new(0, 10, 0, 0)
+        label.BackgroundTransparency = 1; label.TextXAlignment = Enum.TextXAlignment.Left; label.TextYAlignment = Enum.TextYAlignment.Center
+        label.Text = string.format('%s\n<font color="#8fb9ff" size="11"><b>Players: %s</b></font> | <font color="#ffd700" size="11"><b>Money/S: %s</b></font>', name, players, moneyPerSec)
+        label.RichText = true; label.TextColor3 = THEME.text; label.TextSize = 13; label.Font = Enum.Font.GothamBold; label.TextWrapped = true; label.Parent = entry
+        local joinBtn = Instance.new('TextButton')
+        joinBtn.Size = UDim2.new(0, 68, 0, 30); joinBtn.Position = UDim2.new(1, -76, 0.5, -15)
+        joinBtn.BackgroundColor3 = THEME.success; joinBtn.Text = 'Join'; joinBtn.TextColor3 = Color3.fromRGB(255,255,255); joinBtn.TextSize = 13; joinBtn.Font = Enum.Font.GothamBold; joinBtn.Parent = entry
+        local btnCorner = Instance.new('UICorner'); btnCorner.CornerRadius = UDim.new(0, 6); btnCorner.Parent = joinBtn
+        joinBtn.MouseEnter:Connect(function() joinBtn.BackgroundColor3 = THEME.successHover end)
+        joinBtn.MouseLeave:Connect(function() joinBtn.BackgroundColor3 = THEME.success end)
+        joinBtn.Activated:Connect(function()
+            local jobId = clean(server.jobId or server.instanceId)
+            local moneyValue = parseMoney(moneyPerSec)
+            if moneyValue >= 10000000 then
+                local placeId = 109983668079237
+                local ok, err = pcall(function() TeleportService:TeleportToPlaceInstance(placeId, jobId, localPlayer) end)
+                if not ok then warn('Teleport Failed: ' .. tostring(err)) end
+            else
+                local placeId = tonumber(server.serverId)
+                if placeId and jobId and jobId ~= '' then
+                    local ok, err = pcall(function() TeleportService:TeleportToPlaceInstance(placeId, jobId, localPlayer) end)
+                    if not ok then warn('Teleport Failed: ' .. tostring(err)) end
+                end
+            end
+        end)
+    end
+end
+
+local function toggleSearch()
+    if searchActive then
+        searchActive = false; searchTarget = nil; searchToggle.Text = 'Off'
+        TweenService:Create(searchToggle, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn}):Play()
+        debugLog("Search mode disabled")
+    else
+        if searchBox.Text ~= '' then
+            searchActive = true; searchTarget = string.lower(clean(searchBox.Text)); searchToggle.Text = 'On'
+            TweenService:Create(searchToggle, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btnActive}):Play()
+            autoJoinMode = nil
+            secretBtn.BackgroundColor3 = THEME.btn; secretBtn.TextColor3 = THEME.text
+            godBtn.BackgroundColor3 = THEME.btn; godBtn.TextColor3 = THEME.text
+            debugLog("Search mode enabled for: " .. searchTarget)
+        end
+    end
+end
+
+secretBtn.Activated:Connect(function() 
+    if autoJoinMode == 'Secret' then 
+        setAutoJoin(nil) 
+    else 
+        setAutoJoin('Secret') 
+    end 
+end)
+
+godBtn.Activated:Connect(function() 
+    if autoJoinMode == 'God' then 
+        setAutoJoin(nil) 
+    else 
+        setAutoJoin('God') 
+    end 
+end)
+
+searchToggle.Activated:Connect(toggleSearch)
+
+filterBtn.Activated:Connect(function() 
+    filterDropdownOpen = not filterDropdownOpen; dropdownFrame.Visible = filterDropdownOpen 
+end)
+
+searchBox.FocusLost:Connect(function()
+    if searchActive and searchBox.Text ~= '' then searchTarget = string.lower(clean(searchBox.Text))
+    elseif searchActive then searchActive = false; searchToggle.Text = 'Off'; TweenService:Create(searchToggle, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn}):Play() end
+end)
+
+closeBtn.Activated:Connect(function() autoJoinGui:Destroy() end)
+
+local function enterMinimized()
+    if isMinimized then return end
+    savedPreMinimizeSize = rootFrame.Size
+    isMinimized = true
+    contentHost.Visible = false
+    if resizeHandle then resizeHandle.Visible = false end
+    closeBtn.Visible = false
+    minimizeBtn.Visible = false
+    expandBtn.Parent = brandContainer
+    expandBtn.AnchorPoint = Vector2.new(1, 0)
+    expandBtn.Position = UDim2.new(1, -6, 0, 4)
+    expandBtn.Size = UDim2.new(0, 20, 0, 20)
+    expandBtn.ZIndex = 10
+    expandBtn.Image = 'rbxassetid://137817849385475'
+    TweenService:Create(rootFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine), { Size = UDim2.new(0, 250, 0, 50) }):Play()
+end
+
+local function exitMinimized()
+    if not isMinimized then return end
+    isMinimized = false
+    contentHost.Visible = true
+    if resizeHandle then resizeHandle.Visible = true end
+    expandBtn.Parent = originalExpandParent
+    expandBtn.AnchorPoint = Vector2.new(0, 0)
+    expandBtn.Position = originalExpandPos
+    expandBtn.Size = UDim2.new(0, 20, 0, 20)
+    expandBtn.ZIndex = 2
+    closeBtn.Visible = true
+    minimizeBtn.Visible = true
+    TweenService:Create(rootFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine), { Size = savedPreMinimizeSize or savedNormalSize or UDim2.new(0, guiWidth, 0, guiHeight) }):Play()
+end
+
+local function toggleMinimize()
+    if not isMinimized then
+        enterMinimized()
+        if isExpanded then
+            isExpanded = false
+            savedPreExpandSize = nil
+            minimizeBtn.Visible = false
+            expandBtn.Image = 'rbxassetid://137817849385475'
+        end
+    else
+        exitMinimized()
+    end
+end
+
+local function toggleExpand()
+    if isMinimized then
+        exitMinimized()
+        return
+    end
+
+    if not isExpanded then
+        savedPreExpandSize = rootFrame.Size
+        isExpanded = true
+        TweenService:Create(rootFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, 800, 0, 500) }):Play()
+        minimizeBtn.Visible = false
+        expandBtn.Image = 'rbxassetid://110574729016386'
+    else
+        isExpanded = false
+        TweenService:Create(rootFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = savedPreExpandSize or savedNormalSize or UDim2.new(0, guiWidth, 0, guiHeight) }):Play()
+        minimizeBtn.Visible = true
+        expandBtn.Image = 'rbxassetid://137817849385475'
+    end
+end
+
+minimizeBtn.Activated:Connect(toggleMinimize)
+expandBtn.Activated:Connect(toggleExpand)
+
+local draggingByBar = false
+local resizing = false
+local dragStart, startPos, resizeStartMouse, resizeStartSize
+
+local function pointIn(gui, x, y)
+    if not gui or not gui.Parent then return false end
+    local pos, size = gui.AbsolutePosition, gui.AbsoluteSize
+    return x >= pos.X and x <= pos.X + size.X and y >= pos.Y and y <= pos.Y + size.Y
+end
+
+local moveTween = nil
+local function tweenRootTo(pos)
+    if moveTween then moveTween:Cancel() end
+    moveTween = TweenService:Create(rootFrame, TweenInfo.new(0.08, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { Position = pos })
+    moveTween:Play()
+end
+
+local dragHeader = Instance.new('Frame')
+dragHeader.Name = 'DragHeader'
+dragHeader.Size = UDim2.new(1, 0, 0, 40)
+dragHeader.Position = UDim2.new(0, 0, 0, 0)
+dragHeader.BackgroundTransparency = 1
+dragHeader.ZIndex = 3
+dragHeader.Parent = rootFrame
+
+local function handleInputBegan(input)
+    local inputType = input.UserInputType
+    if inputType ~= Enum.UserInputType.MouseButton1 and inputType ~= Enum.UserInputType.Touch then return end
+    local position = input.Position
+    local mx, my = position.X, position.Y
+    if not isMinimized and resizeHandle and resizeHandle.Visible and pointIn(resizeHandle, mx, my) then
+        resizing = true
+        resizeStartMouse = Vector2.new(mx, my)
+        resizeStartSize = rootFrame.Size
+        return
+    end
+    if pointIn(dragBar, mx, my) or pointIn(dragHeader, mx, my) then
+        draggingByBar = true
+        dragStart = Vector2.new(mx, my)
+        startPos = rootFrame.Position
+        TweenService:Create(dragBar, TweenInfo.new(0.1), { BackgroundTransparency = 0.12, BackgroundColor3 = THEME.dragBright }):Play()
+        return
+    end
+end
+
+local function handleInputChanged(input)
+    local inputType = input.UserInputType
+    if inputType ~= Enum.UserInputType.MouseMovement and inputType ~= Enum.UserInputType.Touch then return end
+    local position = input.Position
+    local mx, my = position.X, position.Y
+    if resizing then
+        local delta = Vector2.new(mx, my) - resizeStartMouse
+        local newW = math.max(520, (resizeStartSize.X.Offset + delta.X))
+        local newH = math.max(320, (resizeStartSize.Y.Offset + delta.Y))
+        rootFrame.Size = UDim2.new(0, newW, 0, newH)
+        return
+    end
+    if draggingByBar then
+        local delta = Vector2.new(mx, my) - dragStart
+        local goal = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        tweenRootTo(goal)
+    end
+end
+
+local function handleInputEnded(input)
+    local inputType = input.UserInputType
+    if inputType ~= Enum.UserInputType.MouseButton1 and inputType ~= Enum.UserInputType.Touch then return end
+    if resizing then resizing = false end
+    if draggingByBar then
+        draggingByBar = false
+        TweenService:Create(dragBar, TweenInfo.new(0.15), { Size = UDim2.new(0.6, 0, 0, 6), BackgroundTransparency = 0.55, BackgroundColor3 = THEME.dragBase }):Play()
+    end
+end
+
+UserInputService.InputBegan:Connect(handleInputBegan)
+UserInputService.InputChanged:Connect(handleInputChanged)
+UserInputService.InputEnded:Connect(handleInputEnded)
+
+UserInputService.TouchStarted:Connect(handleInputBegan)
+UserInputService.TouchMoved:Connect(handleInputChanged)
+UserInputService.TouchEnded:Connect(handleInputEnded)
+
+task.spawn(function()
+    local initialServers = getBrainrots()
+    if type(initialServers) == 'table' then
+        for _, server in ipairs(initialServers) do
+            local jobId = clean(server.jobId or server.instanceId)
+            knownServers[jobId] = true
+        end
+        lastKnownServerCount = #initialServers
+        debugLog("Initialized with " .. lastKnownServerCount .. " existing servers")
+    end
+    
+    while autoJoinGui and autoJoinGui.Parent do
+        local servers = getBrainrots()
+        local dataStr = ''; if type(servers) == 'table' then dataStr = HttpService:JSONEncode(servers) end
+        
+        if type(servers) == 'table' and #servers > 0 then 
+            renderServers(servers)
+        else 
+            renderServers({}) 
+        end
+        
+        if dataStr ~= lastData then
+            lastData = dataStr
+            if type(servers) == 'table' and #servers > 0 then 
+                if #servers > lastKnownServerCount then
+                    debugLog("Detected new servers (" .. #servers .. " total, " .. (#servers - lastKnownServerCount) .. " new)")
+                    lastKnownServerCount = #servers
+                end
+                processNewServers(servers)
+            end
+        else
+            if type(servers) == 'table' then
+                processNewServers(servers)
+            end
+        end
+        
+        task.wait(REFRESH_INTERVAL)
+    end
+end)
+
+debugLog("Eps1llon Hub Auto Joiner initialized successfully!")
+debugLog("Features: Instant server detection, 3 attempts per server, local file storage")
+debugLog("Current filter setting: " .. formatMoney(moneyFilter))
+debugLog("Settings file path: " .. getSettingsPath())
+debugLog("HTTP mode: Receive-only (no outgoing requests)")
