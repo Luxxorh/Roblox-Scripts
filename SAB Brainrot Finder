@@ -10,14 +10,14 @@ local localPlayer = Players.LocalPlayer
 
 local BACKEND_URL = 'https://brainrotss.up.railway.app/brainrots'
 local MAX_JOIN_ATTEMPTS = 3
-local REFRESH_INTERVAL = 0.050
+local REFRESH_INTERVAL = 0.1
 local SETTINGS_FOLDER = "Eps1llonHub"
 local SETTINGS_FILE = "Eps1llonHub_AutoJoiner_Settings.json"
 
 local autoJoinMode = nil
 local searchActive = false
 local searchTarget = nil
-local moneyFilter = 10000000
+local moneyFilter = 1000000
 local joinAttempts = {}
 local knownServers = {}
 local lastKnownServerCount = 0
