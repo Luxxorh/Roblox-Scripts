@@ -698,11 +698,11 @@ local function enterMinimized()
     minimizeBtn.Visible = false
     expandBtn.Visible = true
     expandBtn.AnchorPoint = Vector2.new(1, 0)
-    expandBtn.Position = UDim2.new(1, -6, 0, 4)
+    expandBtn.Position = UDim2.new(1, -15, 0, 15)
     expandBtn.Size = UDim2.new(0, 20, 0, 20)
     expandBtn.ZIndex = 10
     expandBtn.Image = 'rbxassetid://137817849385475'
-    TweenService:Create(rootFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine), { Size = UDim2.new(0, 250, 0, 50) }):Play()
+    TweenService:Create(rootFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine), { Size = UDim2.new(0, 290, 0, 50) }):Play()
 end
 
 local function exitMinimized()
