@@ -124,13 +124,13 @@ end
 local function formatMoney(num)
     if num == 0 then return "All" end
     if num >= 1000000000 then
-        return string.format("$%.1fB", num / 1000000000)
+        return "$" .. tostring(math.floor(num / 1000000000)) .. "B+"
     elseif num >= 1000000 then
-        return string.format("$%.1fM", num / 1000000)
+        return "$" .. tostring(math.floor(num / 1000000)) .. "M+"
     elseif num >= 1000 then
-        return string.format("$%.0fK", num / 1000)
+        return "$" .. tostring(math.floor(num / 1000)) .. "K+"
     else
-        return "$" .. tostring(num)
+        return "$" .. tostring(math.floor(num))
     end
 end
 
