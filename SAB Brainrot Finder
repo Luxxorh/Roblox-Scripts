@@ -155,6 +155,20 @@ rootFrame.Draggable = false
 rootFrame.ZIndex = 1
 rootFrame.Parent = autoJoinGui
 
+local resizeHandle = Instance.new("Frame")
+resizeHandle.Name = "ResizeHandle"
+resizeHandle.Size = UDim2.new(0, 10, 0, 10)
+resizeHandle.Position = UDim2.new(1, -10, 1, -10)
+resizeHandle.BackgroundColor3 = THEME.scrollBar
+resizeHandle.BorderSizePixel = 0
+resizeHandle.ZIndex = 5
+resizeHandle.Visible = true
+resizeHandle.Parent = rootFrame
+
+local resizeCorner = Instance.new("UICorner")
+resizeCorner.CornerRadius = UDim.new(1, 0)
+resizeCorner.Parent = resizeHandle
+
 local rootCorner = Instance.new('UICorner'); rootCorner.CornerRadius = UDim.new(0, 14); rootCorner.Parent = rootFrame
 
 local rootStroke = Instance.new('UIStroke')
