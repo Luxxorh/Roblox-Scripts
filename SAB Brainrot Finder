@@ -683,7 +683,7 @@ end)
 
 searchBox.FocusLost:Connect(function()
     if searchActive and searchBox.Text ~= '' then searchTarget = string.lower(clean(searchBox.Text))
-    elseif searchActive then searchActive = false; searchToggle.Text = 'Off'; TweenService:Create(searchToggle, TweenInfo.new(0.15), {BackgroundColor3 = THEME.btn}):Play() end
+    elseif searchActive then searchActive = false; searchToggle.Text = 'Off'; TweenService:Create(searchToggle, TweenInfo.new(0.16), {BackgroundColor3 = THEME.btn}):Play() end
 end)
 
 closeBtn.Activated:Connect(function() autoJoinGui:Destroy() end)
@@ -702,7 +702,7 @@ local function enterMinimized()
     expandBtn.Size = UDim2.new(0, 20, 0, 20)
     expandBtn.ZIndex = 10
     expandBtn.Image = 'rbxassetid://137817849385475'
-    TweenService:Create(rootFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine), { Size = UDim2.new(0, 290, 0, 50) }):Play()
+    TweenService:Create(rootFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine), { Size = UDim2.new(0, 315, 0, 50) }):Play()
 end
 
 local function exitMinimized()
