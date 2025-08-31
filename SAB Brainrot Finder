@@ -698,7 +698,7 @@ local function enterMinimized()
     minimizeBtn.Visible = false
     expandBtn.Visible = true
     expandBtn.AnchorPoint = Vector2.new(1, 0)
-    expandBtn.Position = UDim2.new(1, -15, 0, 15)
+    expandBtn.Position = UDim2.new(1, -15, 0, 16)
     expandBtn.Size = UDim2.new(0, 20, 0, 20)
     expandBtn.ZIndex = 10
     expandBtn.Image = 'rbxassetid://137817849385475'
