@@ -73,6 +73,14 @@ local function loadSettings()
     return nil
 end
 
+local function saveSettings(settings)
+    if type(settings) ~= "table" then return end
+    local settingsPath = getSettingsPath()
+    if writefile then
+        writefile(settingsPath, HttpService:JSONEncode(settings))
+    end
+end
+
 loadSettings()
 
 local ACCENT_A = Color3.fromRGB(64, 156, 255)
