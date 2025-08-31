@@ -48,7 +48,7 @@ local function ensureFolderAndFile()
     local settingsPath = getSettingsPath()
     if writefile and not isfile(settingsPath) then
         local defaultSettings = {
-            lastUpdated = 1756597920.3382138,
+            lastUpdated = 1756606830.9383097,
             moneyFilter = 1000000
         }
         writefile(settingsPath, HttpService:JSONEncode(defaultSettings))
@@ -59,20 +59,6 @@ local function ensureFolderAndFile()
         return decoded
     end
     return nil
-end
-
-local function saveSettings()
-    local settings = {
-        moneyFilter = moneyFilter,
-        lastUpdated = tick()
-    }
-
-    local settingsPath = getSettingsPath()
-    if writefile then
-        local content = HttpService:JSONEncode(settings)
-        writefile(settingsPath, content)
-        debugLog("Saved filter setting: " .. formatMoney(moneyFilter))
-    end
 end
 
 local function loadSettings()
