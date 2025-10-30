@@ -1,0 +1,2273 @@
+if game.PlaceId ~= 155615604 then
+    local player = game:GetService("Players").LocalPlayer
+    player:Kick("Detected user executing the script in a different game, please execute the script in Prison Life ONLY.")
+    return
+end
+
+local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
+local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
+local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
+
+local Window = Library:CreateWindow({
+    Title = ".gg/hookduel",
+    Center = true,
+    AutoShow = true,
+})
+
+local Tabs = {
+    Target = Window:AddTab("Target"),
+    Guns = Window:AddTab("Guns", "crosshair"),
+    LocalPlayer = Window:AddTab("LocalPlayer", "user"),
+    Teleportation = Window:AddTab("Teleportation", "map-pin"),
+    ESP = Window:AddTab("ESP", "wrench"),
+    ["UI Settings"] = Window:AddTab("UI Settings", "settings"),
+}
+
+_G.Settings = {
+    SelectedGun = "Remington 870",
+    EnableReloadCooldown = false,
+    ReloadCooldownValue = 2,
+    AutoGrabGuns = false,
+    EnableFireRateAdjuster = false,
+    FireRateValue = 0.8,
+    EnableAutoFire = false,
+    EnableAutoReload = false,
+    TeleportDestination = "Armory",
+    SelectedPlayer = "",
+    EnableESP = false,
+    ESPTeamCheck = false,
+    ShowESPBoxes = false,
+    ShowHealthBars = false,
+    ShowDistance = false,
+    ShowNames = false,
+    EnableInfiniteJump = false,
+    EnableWalkspeed = false,
+    WalkspeedValue = 16,
+    EnableJumpPower = false,
+    JumpPowerValue = 50,
+    EnableNoclip = false,
+    EnableInfiniteZoom = false,
+    EnableFOVChanger = false,
+    FOVValue = 70,
+    EnableColorChanger = false,
+    GunColor = Color3.fromRGB(255, 255, 255)
+}
+
+_G.SilentAimConfig = _G.SilentAimConfig or {
+    enabled = false,
+    fov = 70,
+    showFov = false,
+    followMouse = false,
+    targetPart = "Head",
+    randomHitPart = false,
+    hitChance = 100,
+    visibleCheck = true,
+    wallCheck = false,
+    teamCheck = false,
+    debug = false
+}
+
+_G.AimlockConfig = _G.AimlockConfig or {
+    enabled = false,
+    targetPart = "Head",
+    randomHitPart = false,
+    hitChance = 100,
+    visibleCheck = true,
+    wallCheck = false,
+    teamCheck = false,
+    tracerEnabled = false,
+    tracerColor = Color3.fromRGB(255, 255, 255),
+    tracerTransparency = 1,
+    chamsEnabled = false,
+    chamsColor = Color3.fromRGB(255, 255, 255),
+    showButton = false,
+    debug = false
+}
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local GunRemotes = game:GetService("ReplicatedStorage"):FindFirstChild("GunRemotes")
+local Debris = game:GetService("Debris")
+local GuiService = game:GetService("GuiService")
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local InfiniteJumpConnection
+local NoclipConnection
+local ESP = {}
+local ActiveCharacters = {}
+local ESPConnection
+local ReloadCooldownConnection
+local FireRateConnection
+local AutoFireConnection
+local GunColorConnection
+local AutoReloadConnection
+local DefaultGunColors = {}
+
+local gunPositions = {
+    ["Remington 870"] = Vector3.new(820.298583984375, 97.85000610351562, 2217.396240234375),
+    ["AK-47"] = Vector3.new(-922.3126831054688, 91.27828216552734, 2051.95361328125),
+    ["M9"] = Vector3.new(813.6986694335938, 97.85000610351562, 2217.396240234375),
+    ["M4A1 (Own Riot Gamepass)"] = Vector3.new(847.4985961914062, 97.85000610351562, 2217.396240234375)
+}
+
+local defaultFireRates = {
+    ["Remington 870"] = 0.8,
+    ["M9"] = 0.1,
+    ["AK-47"] = 0.1,
+    ["M4A1"] = 0.087
+}
+
+local automaticWeapons = {
+    ["M4A1"] = 0.0875,
+    ["AK-47"] = 0.1,
+    ["AK47"] = 0.1
+}
+
+local hitParts = {
+    "Head",
+    "Torso",
+    "UpperTorso",
+    "HumanoidRootPart",
+    "Left Arm",
+    "Right Arm",
+    "Left Leg",
+    "Right Leg"
+}
+
+local GunFrame = LocalPlayer.PlayerGui:WaitForChild("Home").hud.BottomRightFrame.GunFrame
+local MobileGunFrame = LocalPlayer.PlayerGui.Home.hud.MobileGunFrame
+local Drawing = Drawing or loadstring(game:HttpGet("https://raw.githubusercontent.com/RobloxScriptsHub/Drawing-Library/main/Drawing.lua"))()
+local screenSize = Camera.ViewportSize
+local FovCircle = Drawing.new("Circle")
+FovCircle.Color = Color3.fromRGB(255, 255, 255)
+FovCircle.Thickness = 1.5
+FovCircle.Transparency = 1
+FovCircle.Filled = false
+FovCircle.NumSides = 100
+FovCircle.Radius = _G.SilentAimConfig.fov
+FovCircle.Visible = _G.SilentAimConfig.showFov
+FovCircle.Position = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+
+local tracerLine = Drawing.new("Line")
+tracerLine.Thickness = 2
+tracerLine.Color = _G.AimlockConfig.tracerColor
+tracerLine.Transparency = _G.AimlockConfig.tracerTransparency
+tracerLine.Visible = false
+tracerLine.ZIndex = 100
+
+local raycastParams = RaycastParams.new()
+raycastParams.CollisionGroup = "ClientBullet"
+raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+raycastParams.FilterDescendantsInstances = {LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()}
+
+local cachedClosestPlayer = nil
+local cachedClosestPlayerAimlock = nil
+local isHoldingFire = false
+local isHoldingFireAimlock = false
+local lockedTarget = nil
+local chamsFolder = nil
+
+local monitoredGuns = {"AK-47", "Remington 870", "M9", "Taser", "M4A1"}
+local reloadConnections = {}
+local hasPressedReload = false
+
+local function setupAmmoMonitoring()
+    for _, connection in pairs(reloadConnections) do
+        connection:Disconnect()
+    end
+    reloadConnections = {}
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    for _, gunName in ipairs(monitoredGuns) do
+        local gunTool = character:FindFirstChild(gunName)
+        if gunTool and gunTool:IsA("Tool") then
+            local function checkAndReload()
+                if not _G.Settings.EnableAutoReload or hasPressedReload then
+                    return
+                end
+                
+                local currentAmmo = gunTool:GetAttribute("CurrentAmmo")
+                if not currentAmmo then return end
+                
+                local shouldReload = false
+                
+                if gunName == "Remington 870" then
+                    shouldReload = currentAmmo <= 1
+                elseif gunName == "Taser" then
+                    shouldReload = currentAmmo <= 0
+                else
+                    shouldReload = currentAmmo <= 5
+                end
+                
+                if shouldReload then
+                    print("Auto-reload: " .. gunName .. " needs reload (ammo: " .. currentAmmo .. ")")
+                    
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+                    task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+                    
+                    hasPressedReload = true
+                    
+                    task.wait(0.05)
+                    hasPressedReload = false
+                end
+            end
+            
+            if gunTool:GetAttribute("CurrentAmmo") ~= nil then
+                local connection = gunTool:GetAttributeChangedSignal("CurrentAmmo"):Connect(checkAndReload)
+                table.insert(reloadConnections, connection)
+                
+                checkAndReload()
+            end
+        end
+    end
+end
+
+local function toggleAutoReload(enable)
+    if enable then
+        hasPressedReload = false
+        
+        setupAmmoMonitoring()
+        
+        LocalPlayer.CharacterAdded:Connect(function(character)
+            task.wait(1)
+            setupAmmoMonitoring()
+            hasPressedReload = false
+        end)
+        
+        local character = LocalPlayer.Character
+        if character then
+            character.ChildAdded:Connect(function(child)
+                if table.find(monitoredGuns, child.Name) and child:IsA("Tool") then
+                    task.wait(0.5)
+                    setupAmmoMonitoring()
+                end
+            end)
+        end
+        
+    else
+        for _, connection in pairs(reloadConnections) do
+            connection:Disconnect()
+        end
+        reloadConnections = {}
+        hasPressedReload = false
+    end
+end
+
+local function isSameTeam(player)
+    if player == LocalPlayer then
+        return true
+    end
+    if player.Team and LocalPlayer.Team then
+        return player.Team == LocalPlayer.Team
+    end
+    return false
+end
+
+local function getClosestPlayerForSilentAim()
+    if not _G.SilentAimConfig.enabled then return nil end
+    
+    local closestPlayer = nil
+    local shortestDistance = _G.SilentAimConfig.fov
+    local fovCenter
+    
+    if _G.SilentAimConfig.followMouse then
+        local inputPos = getTouchPosition()
+        fovCenter = Vector2.new(inputPos.X, inputPos.Y)
+    else
+        fovCenter = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+    end
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if not player.Character then continue end
+        
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then continue end
+        
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+        
+        if _G.SilentAimConfig.teamCheck and isSameTeam(player) then continue end
+        
+        local targetPart = player.Character:FindFirstChild(_G.SilentAimConfig.targetPart)
+        if not targetPart then continue end
+        
+        if _G.SilentAimConfig.visibleCheck then
+            local origin = Camera.CFrame.Position
+            local direction = (targetPart.Position - origin).Unit * 1000
+            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            local result = workspace:Raycast(origin, direction, raycastParams)
+            if result and result.Instance and not player.Character:IsAncestorOf(result.Instance) then
+                continue
+            end
+        end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+        if not onScreen then continue end
+        
+        local screenPoint = Vector2.new(screenPos.X, screenPos.Y)
+        local distance = (screenPoint - fovCenter).Magnitude
+        
+        if _G.SilentAimConfig.showFov then
+            if distance <= _G.SilentAimConfig.fov and distance < shortestDistance then
+                shortestDistance = distance
+                closestPlayer = player
+            end
+        else
+            if distance < shortestDistance then
+                shortestDistance = distance
+                closestPlayer = player
+            end
+        end
+    end
+    return closestPlayer
+end
+
+local function getClosestPlayerForAimlock()
+    if not _G.AimlockConfig.enabled then return nil end
+    
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local screenCenter = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player == LocalPlayer then continue end
+        if not player.Character then continue end
+        
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        if not humanoid or humanoid.Health <= 0 then continue end
+        
+        local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
+        
+        if _G.AimlockConfig.teamCheck and isSameTeam(player) then continue end
+        
+        local targetPart = player.Character:FindFirstChild(_G.AimlockConfig.targetPart)
+        if not targetPart then continue end
+        
+        if _G.AimlockConfig.visibleCheck then
+            local origin = Camera.CFrame.Position
+            local direction = (targetPart.Position - origin).Unit * 1000
+            raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
+            local result = workspace:Raycast(origin, direction, raycastParams)
+            if result and result.Instance and not player.Character:IsAncestorOf(result.Instance) then
+                continue
+            end
+        end
+        
+        local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+        if not onScreen then continue end
+        
+        local screenPoint = Vector2.new(screenPos.X, screenPos.Y)
+        local distance = (screenPoint - screenCenter).Magnitude
+        
+        if distance < shortestDistance then
+            shortestDistance = distance
+            closestPlayer = player
+        end
+    end
+    return closestPlayer
+end
+
+RunService.Heartbeat:Connect(function()
+    if _G.SilentAimConfig.enabled then
+        cachedClosestPlayer = getClosestPlayerForSilentAim()
+    else
+        cachedClosestPlayer = nil
+    end
+
+    if _G.AimlockConfig.enabled then
+        cachedClosestPlayerAimlock = getClosestPlayerForAimlock()
+    else
+        cachedClosestPlayerAimlock = nil
+    end
+end)
+
+local function getPlayerList()
+    local playerNames = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(playerNames, player.DisplayName)
+        end
+    end
+    if #playerNames == 0 then
+        table.insert(playerNames, "No players available")
+    end
+    return playerNames
+end
+
+local function updatePlayerListDropdown()
+    if not TeleportToPlayerGroupbox then return end
+    local currentPlayers = getPlayerList()
+    TeleportToPlayerGroupbox:UpdateDropdown("PlayerList", {
+        Values = currentPlayers,
+        Default = currentPlayers[1] or "No players available"
+    })
+end
+
+local function teleportToPlayer()
+    local selectedPlayerName = _G.Settings.SelectedPlayer
+    if not selectedPlayerName or selectedPlayerName == "" or selectedPlayerName == "No players available" then
+        return
+    end
+    local targetPlayer
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.DisplayName == selectedPlayerName then
+            targetPlayer = player
+            break
+        end
+    end
+    if not targetPlayer then
+        updatePlayerListDropdown()
+        return
+    end
+    local character = LocalPlayer.Character
+    local targetCharacter = targetPlayer.Character
+    if not character or not targetCharacter then
+        return
+    end
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart or not targetHRP then
+        return
+    end
+    humanoidRootPart.CFrame = targetHRP.CFrame
+end
+
+local function teleportToDestination()
+    local character = LocalPlayer.Character
+    if not character then return end
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    local destination = _G.Settings.TeleportDestination
+    if destination == "Armory" then
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("Part") and part.Name == "floor" then
+                if (part.Position - Vector3.new(826.2001953125, 95.99000549316406, 2290.85009765625)).Magnitude < 5 then
+                    humanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 5, 0))
+                    break
+                end
+            end
+        end
+    elseif destination == "Inside Prison" then
+        local prisonSpawn = workspace:FindFirstChild("Prison_spawn")
+        if prisonSpawn then
+            local nexus = prisonSpawn:FindFirstChild("Nexus")
+            if nexus then
+                local spawnLocation = nexus:FindFirstChild("SpawnLocation")
+                if spawnLocation then
+                    humanoidRootPart.CFrame = spawnLocation.CFrame
+                end
+            end
+        end
+    elseif destination == "Secret Room" then
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("Part") and part.Name == "part" then
+                if (part.Position - Vector3.new(701.4503173828125, 95.99000549316406, 2354.300048828125)).Magnitude < 5 then
+                    humanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 5, 0))
+                    break
+                end
+            end
+        end
+    elseif destination == "Prison Yard" then
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("Part") and part.Name == "c_floor" then
+                if (part.Position - Vector3.new(795.7847900390625, 95.0899429321289, 2541.00537109375)).Magnitude < 5 then
+                    humanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 5, 0))
+                    break
+                end
+            end
+        end
+    elseif destination == "Criminal Base" then
+        local criminalsSpawn = workspace:FindFirstChild("Criminals Spawn")
+        if criminalsSpawn then
+            local spawnLocation = criminalsSpawn:FindFirstChild("SpawnLocation")
+            if spawnLocation then
+                humanoidRootPart.CFrame = spawnLocation.CFrame
+            end
+        end
+    elseif destination == "Prison Car Spawner" then
+        local prisonItems = workspace:FindFirstChild("Prison_ITEMS")
+        if prisonItems then
+            local buttons = prisonItems:FindFirstChild("buttons")
+            if buttons then
+                for _, model in ipairs(buttons:GetDescendants()) do
+                    if model:IsA("Model") and model.Name == "Car Spawner" then
+                        local pivotPos = model:GetPivot().Position
+                        if (pivotPos - Vector3.new(596.3715209960938, 95.30281829833984, 2504.16137695312)).Magnitude < 10 then
+                            local box = model:FindFirstChild("Box")
+                            if box and box:IsA("Part") then
+                                humanoidRootPart.CFrame = CFrame.new(box.Position + Vector3.new(0, 5, 0))
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    elseif destination == "Prison Kitchen" then
+        for _, part in ipairs(workspace:GetDescendants()) do
+            if part:IsA("Part") and part.Name == "floor" then
+                if (part.Position - Vector3.new(773.3502197265625, 95.99000549316406, 2229.10009765625)).Magnitude < 5 then
+                    humanoidRootPart.CFrame = CFrame.new(part.Position + Vector3.new(0, 5, 0))
+                    break
+                end
+            end
+        end
+    end
+end
+
+local function resetPlayer()
+    local character = LocalPlayer.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.Health = 0
+        end
+    end
+end
+
+local function updateAutoFire()
+    if not _G.Settings.EnableAutoFire then
+        return
+    end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    local gunNames = {"AK-47", "M9", "Remington 870", "M4A1"}
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if table.find(gunNames, tool.Name) then
+            if tool:GetAttribute("AutoFire") ~= nil then
+                tool:SetAttribute("AutoFire", true)
+            end
+        end
+    end
+end
+
+local function resetAutoFire()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    local gunNames = {"AK-47", "M9", "Remington 870", "M4A1"}
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if table.find(gunNames, tool.Name) then
+            if tool:GetAttribute("AutoFire") ~= nil then
+                tool:SetAttribute("AutoFire", false)
+            end
+        end
+    end
+end
+
+local function toggleAutoFire(enable)
+    if enable then
+        updateAutoFire()
+        AutoFireConnection = RunService.Heartbeat:Connect(function()
+            updateAutoFire()
+        end)
+    else
+        if AutoFireConnection then
+            AutoFireConnection:Disconnect()
+            AutoFireConnection = nil
+        end
+        resetAutoFire()
+    end
+end
+
+local function updateFireRate()
+    if not _G.Settings.EnableFireRateAdjuster then
+        return
+    end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    local gunNames = {"Remington 870", "M9", "AK-47", "M4A1"}
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if table.find(gunNames, tool.Name) then
+            if tool:GetAttribute("FireRate") then
+                tool:SetAttribute("FireRate", _G.Settings.FireRateValue)
+            end
+        end
+    end
+end
+
+local function toggleFireRateAdjuster(enable)
+    if enable then
+        updateFireRate()
+        FireRateConnection = RunService.Heartbeat:Connect(function()
+            updateFireRate()
+        end)
+    else
+        if FireRateConnection then
+            FireRateConnection:Disconnect()
+            FireRateConnection = nil
+        end
+        resetPlayer()
+    end
+end
+
+local function fireTouchGiver(gunName)
+    local targetPosition = gunPositions[gunName]
+    if not targetPosition then return end
+    for _, model in ipairs(workspace:GetDescendants()) do
+        if model:IsA("Model") and model.Name == "TouchGiver" then
+            local touchPart = model:FindFirstChild("TouchGiver")
+            if touchPart and touchPart:IsA("Part") then
+                local partPosition = touchPart.Position
+                if (partPosition - targetPosition).Magnitude < 1 then
+                    local touchTransmitter = touchPart:FindFirstChildOfClass("TouchTransmitter")
+                    if touchTransmitter then
+                        local character = LocalPlayer.Character
+                        if character then
+                            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                            if humanoidRootPart then
+                                firetouchinterest(humanoidRootPart, touchPart, 0)
+                                firetouchinterest(humanoidRootPart, touchPart, 1)
+                            end
+                        end
+                    end
+                    break
+                end
+            end
+        end
+    end
+end
+
+local function autoGrabGuns()
+    if not _G.Settings.AutoGrabGuns then return end
+    local gunsToGrab = {"Remington 870", "AK-47", "M9"}
+    for _, gunName in ipairs(gunsToGrab) do
+        fireTouchGiver(gunName)
+        task.wait(0.55)
+    end
+end
+
+local function updateReloadCooldown()
+    if not _G.Settings.EnableReloadCooldown then
+        return
+    end
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    local gunNames = {"M9", "Taser", "Remington 870", "AK-47", "M4A1"}
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if table.find(gunNames, tool.Name) then
+            if tool:GetAttribute("ReloadTime") then
+                tool:SetAttribute("ReloadTime", _G.Settings.ReloadCooldownValue)
+            end
+        end
+    end
+end
+
+local function resetReloadCooldown()
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if not backpack then return end
+    local gunNames = {"M9", "Taser", "Remington 870", "AK-47", "M4A1"}
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if table.find(gunNames, tool.Name) then
+            if tool:GetAttribute("ReloadTime") then
+                tool:SetAttribute("ReloadTime", 2)
+            end
+        end
+    end
+end
+
+local function toggleReloadCooldown(enable)
+    if enable then
+        updateReloadCooldown()
+        ReloadCooldownConnection = RunService.Heartbeat:Connect(function()
+            updateReloadCooldown()
+        end)
+    else
+        if ReloadCooldownConnection then
+            ReloadCooldownConnection:Disconnect()
+            ReloadCooldownConnection = nil
+        end
+        resetReloadCooldown()
+    end
+end
+
+local function pickupGun()
+    local selectedGun = _G.Settings.SelectedGun
+    fireTouchGiver(selectedGun)
+end
+
+local function saveDefaultGunColors()
+    DefaultGunColors = {}
+    local gunNames = {"M9", "Taser", "Remington 870", "AK-47", "M4A1"}
+    local partNames = {"Handle", "Muzzle", "Part"}
+    
+    local function scanTools(parent)
+        for _, tool in ipairs(parent:GetChildren()) do
+            if table.find(gunNames, tool.Name) then
+                for _, partName in ipairs(partNames) do
+                    local part = tool:FindFirstChild(partName)
+                    if part and part:IsA("Part") then
+                        local key = tool.Name .. "_" .. partName
+                        DefaultGunColors[key] = part.Color
+                    end
+                end
+            end
+        end
+    end
+    
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        scanTools(backpack)
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        scanTools(character)
+    end
+end
+
+local function updateGunColors()
+    if not _G.Settings.EnableColorChanger then
+        return
+    end
+    
+    local gunNames = {"M9", "Taser", "Remington 870", "AK-47", "M4A1"}
+    local partNames = {"Handle", "Muzzle", "Part"}
+    local selectedColor = _G.Settings.GunColor
+    
+    local function colorTools(parent)
+        for _, tool in ipairs(parent:GetChildren()) do
+            if table.find(gunNames, tool.Name) then
+                for _, partName in ipairs(partNames) do
+                    local part = tool:FindFirstChild(partName)
+                    if part and part:IsA("Part") then
+                        part.Color = selectedColor
+                    end
+                end
+            end
+        end
+    end
+    
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        colorTools(backpack)
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        colorTools(character)
+    end
+end
+
+local function resetGunColors()
+    local gunNames = {"M9", "Taser", "Remington 870", "AK-47", "M4A1"}
+    local partNames = {"Handle", "Muzzle", "Part"}
+    
+    local function restoreTools(parent)
+        for _, tool in ipairs(parent:GetChildren()) do
+            if table.find(gunNames, tool.Name) then
+                for _, partName in ipairs(partNames) do
+                    local part = tool:FindFirstChild(partName)
+                    if part and part:IsA("Part") then
+                        local key = tool.Name .. "_" .. partName
+                        if DefaultGunColors[key] then
+                            part.Color = DefaultGunColors[key]
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    local backpack = LocalPlayer:FindFirstChild("Backpack")
+    if backpack then
+        restoreTools(backpack)
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        restoreTools(character)
+    end
+end
+
+local function toggleColorChanger(enable)
+    if enable then
+        saveDefaultGunColors()
+        updateGunColors()
+        GunColorConnection = RunService.Heartbeat:Connect(function()
+            updateGunColors()
+        end)
+    else
+        if GunColorConnection then
+            GunColorConnection:Disconnect()
+            GunColorConnection = nil
+        end
+        resetGunColors()
+    end
+end
+
+local function createESP(player)
+    if ESP[player] then return end
+    local box = Drawing.new("Square")
+    box.Thickness = 1
+    box.Filled = false
+    box.Color = Color3.new(1, 1, 1)
+    box.Visible = false
+    local healthBar = Drawing.new("Square")
+    healthBar.Thickness = 0
+    healthBar.Filled = true
+    healthBar.Color = Color3.new(0, 1, 0)
+    healthBar.Visible = false
+    local healthOutline = Drawing.new("Square")
+    healthOutline.Thickness = 1
+    healthOutline.Filled = false
+    healthOutline.Color = Color3.new(1, 1, 1)
+    healthOutline.Visible = false
+    local nameTag = Drawing.new("Text")
+    nameTag.Size = 13
+    nameTag.Center = true
+    nameTag.Outline = true
+    nameTag.Color = Color3.new(1, 1, 1)
+    nameTag.Visible = false
+    local distanceTag = Drawing.new("Text")
+    distanceTag.Size = 13
+    distanceTag.Center = true
+    distanceTag.Outline = true
+    distanceTag.Color = Color3.new(1, 1, 1)
+    distanceTag.Visible = false
+    ESP[player] = {
+        Box = box,
+        Health = healthBar,
+        HealthOutline = healthOutline,
+        Name = nameTag,
+        Distance = distanceTag
+    }
+end
+
+local function removeESP(player)
+    if ESP[player] then
+        for _, obj in pairs(ESP[player]) do
+            obj:Remove()
+        end
+        ESP[player] = nil
+    end
+    ActiveCharacters[player] = nil
+end
+
+local function shouldShowESP(player)
+    if player == LocalPlayer then
+        return false
+    end
+    if _G.Settings.ESPTeamCheck then
+        return not isSameTeam(player)
+    else
+        return true
+    end
+end
+
+local function getBoundingBox(character)
+    local minX, minY = math.huge, math.huge
+    local maxX, maxY = -math.huge, -math.huge
+    local onScreen = false
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            local size = part.Size / 2
+            local corners = {
+                Vector3.new(-size.X, -size.Y, -size.Z),
+                Vector3.new(-size.X, -size.Y,  size.Z),
+                Vector3.new(-size.X,  size.Y, -size.Z),
+                Vector3.new(-size.X,  size.Y,  size.Z),
+                Vector3.new( size.X, -size.Y, -size.Z),
+                Vector3.new( size.X, -size.Y,  size.Z),
+                Vector3.new( size.X,  size.Y, -size.Z),
+                Vector3.new( size.X,  size.Y,  size.Z),
+            }
+            for _, offset in ipairs(corners) do
+                local worldPos = part.CFrame:PointToWorldSpace(offset)
+                local screenPos, visible = Camera:WorldToViewportPoint(worldPos)
+                if visible then
+                    onScreen = true
+                    minX = math.min(minX, screenPos.X)
+                    minY = math.min(minY, screenPos.Y)
+                    maxX = math.max(maxX, screenPos.X)
+                    maxY = math.max(maxY, screenPos.Y)
+                end
+            end
+        end
+    end
+    if not onScreen then return nil end
+    local width = maxX - minX
+    local height = maxY - minY
+    return Vector2.new(minX, minY), Vector2.new(width, height)
+end
+
+local function toggleESP(enable)
+    if enable then
+        if ESPConnection then
+            ESPConnection:Disconnect()
+            ESPConnection = nil
+        end
+        for _, player in ipairs(Players:GetPlayers()) do
+            if shouldShowESP(player) then
+                createESP(player)
+            else
+                removeESP(player)
+            end
+        end
+        ESPConnection = RunService.RenderStepped:Connect(function()
+            for _, player in ipairs(Players:GetPlayers()) do
+                if shouldShowESP(player) then
+                    local character = player.Character
+                    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+                    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+                    if character and humanoid and hrp and humanoid.Health > 0 then
+                        if ActiveCharacters[player] ~= character then
+                            removeESP(player)
+                            createESP(player)
+                            ActiveCharacters[player] = character
+                        end
+                        local topLeft, size = getBoundingBox(character)
+                        local esp = ESP[player]
+                        if topLeft and size then
+                            local boxSize = size
+                            local boxPos = topLeft
+                            esp.Box.Size = boxSize
+                            esp.Box.Position = boxPos
+                            esp.Box.Visible = _G.Settings.ShowESPBoxes
+                            local healthRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+                            local barHeight = boxSize.Y
+                            local barWidth = 4
+                            local barX = boxPos.X + boxSize.X + 2
+                            local barY = boxPos.Y + barHeight * (1 - healthRatio)
+                            esp.Health.Size = Vector2.new(barWidth, barHeight * healthRatio)
+                            esp.Health.Position = Vector2.new(barX, barY)
+                            esp.Health.Color = Color3.fromRGB(255 * (1 - healthRatio), 255 * healthRatio, 0)
+                            esp.Health.Visible = _G.Settings.ShowHealthBars
+                            esp.HealthOutline.Size = Vector2.new(barWidth, barHeight)
+                            esp.HealthOutline.Position = Vector2.new(barX, boxPos.Y)
+                            esp.HealthOutline.Visible = _G.Settings.ShowHealthBars
+                            esp.Name.Text = player.Name
+                            esp.Name.Position = Vector2.new(boxPos.X + boxSize.X / 2, boxPos.Y - 15)
+                            esp.Name.Color = player.TeamColor and player.TeamColor.Color or Color3.new(1, 1, 1)
+                            esp.Name.Visible = _G.Settings.ShowNames
+                            local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart"))
+                                and math.floor((hrp.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+                                or 0
+                            esp.Distance.Text = tostring(distance) .. " studs"
+                            esp.Distance.Position = Vector2.new(boxPos.X + boxSize.X / 2, boxPos.Y + boxSize.Y + 2)
+                            esp.Distance.Visible = _G.Settings.ShowDistance
+                        else
+                            esp.Box.Visible = false
+                            esp.Health.Visible = false
+                            esp.HealthOutline.Visible = false
+                            esp.Name.Visible = false
+                            esp.Distance.Visible = false
+                        end
+                    else
+                        removeESP(player)
+                    end
+                else
+                    removeESP(player)
+                end
+            end
+        end)
+        Players.PlayerAdded:Connect(function(player)
+            if shouldShowESP(player) then
+                createESP(player)
+            end
+        end)
+        Players.PlayerRemoving:Connect(removeESP)
+    else
+        if ESPConnection then
+            ESPConnection:Disconnect()
+            ESPConnection = nil
+        end
+        for player, _ in pairs(ESP) do
+            removeESP(player)
+        end
+    end
+end
+
+local function toggleInfiniteJump(enable)
+    if enable then
+        InfiniteJumpConnection = UserInputService.JumpRequest:Connect(function()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+            end
+        end)
+    else
+        if InfiniteJumpConnection then
+            InfiniteJumpConnection:Disconnect()
+            InfiniteJumpConnection = nil
+        end
+    end
+end
+
+local function updateWalkspeed()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if _G.Settings.EnableWalkspeed then
+            humanoid.WalkSpeed = _G.Settings.WalkspeedValue
+        else
+            humanoid.WalkSpeed = 16
+        end
+    end
+end
+
+local function updateJumpPower()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if _G.Settings.EnableJumpPower then
+            humanoid.JumpPower = _G.Settings.JumpPowerValue
+        else
+            humanoid.JumpPower = 50
+        end
+    end
+end
+
+local function toggleNoclip(enable)
+    if enable then
+        NoclipConnection = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        if NoclipConnection then
+            NoclipConnection:Disconnect()
+            NoclipConnection = nil
+        end
+        if LocalPlayer.Character then
+            for _, part in ipairs(LocalPlayer.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
+local function toggleInfiniteZoom(enable)
+    if enable then
+        LocalPlayer.CameraMaxZoomDistance = math.huge
+    else
+        LocalPlayer.CameraMaxZoomDistance = 40
+    end
+end
+
+local function updateFOV()
+    if _G.Settings.EnableFOVChanger then
+        Camera.FieldOfView = _G.Settings.FOVValue
+    else
+        Camera.FieldOfView = 70
+    end
+end
+
+local function toggleFOVChanger(enable)
+    _G.Settings.EnableFOVChanger = enable
+    updateFOV()
+end
+
+local function getAutomaticFireRate()
+    if not var12_upvw then return nil end
+    local weaponName = var12_upvw.Name
+    if automaticWeapons[weaponName] then
+        return automaticWeapons[weaponName]
+    end
+    for autoWeapon, fireRate in pairs(automaticWeapons) do
+        if weaponName:find(autoWeapon) then
+            return fireRate
+        end
+    end
+    return nil
+end
+
+local function getRandomHitPart(character)
+    if not character then return "Head" end
+    local availableParts = {}
+    for _, partName in ipairs(hitParts) do
+        local part = character:FindFirstChild(partName)
+        if part then
+            table.insert(availableParts, partName)
+        end
+    end
+    if #availableParts > 0 then
+        return availableParts[math.random(1, #availableParts)]
+    else
+        return "Head"
+    end
+end
+
+local function shouldHit()
+    if _G.SilentAimConfig.hitChance >= 100 then
+        return true
+    end
+    return math.random(1, 100) <= _G.SilentAimConfig.hitChance
+end
+
+local function playGunSounds()
+    if not var12_upvw or not var12_upvw:FindFirstChild("Handle") then return end
+    local handle = var12_upvw.Handle
+    local soundNames = {"Shoot", "Fire", "Gunshot", "Shot", "ShootSound", "FireSound", "GunFire"}
+    for _, soundName in pairs(soundNames) do
+        local sound = handle:FindFirstChild(soundName)
+        if sound and sound:IsA("Sound") then
+            sound:Play()
+        end
+    end
+    for _, child in pairs(var12_upvw:GetDescendants()) do
+        if child:IsA("Sound") and (child.Name:lower():find("shoot") or child.Name:lower():find("fire") or child.Name:lower():find("gun")) then
+            child:Play()
+        end
+    end
+end
+
+local function getTargetPosition()
+    local targetPlayer = cachedClosestPlayer
+    if targetPlayer and targetPlayer.Character then
+        local targetPartName = _G.SilentAimConfig.targetPart
+        if _G.SilentAimConfig.randomHitPart then
+            targetPartName = getRandomHitPart(targetPlayer.Character)
+        end
+        local targetPart = targetPlayer.Character:FindFirstChild(targetPartName)
+        if targetPart then
+            return targetPart.Position, targetPart
+        end
+    end
+    return nil, nil
+end
+
+local function getAimlockTargetPosition()
+    local targetPlayer = lockedTarget
+    if targetPlayer and targetPlayer.Character then
+        local targetPartName = _G.AimlockConfig.targetPart
+        if _G.AimlockConfig.randomHitPart then
+            targetPartName = getRandomHitPart(targetPlayer.Character)
+        end
+        local targetPart = targetPlayer.Character:FindFirstChild(targetPartName)
+        if targetPart then
+            return targetPart.Position, targetPart
+        end
+    end
+    return nil, nil
+end
+
+local function createBullet(muzzlePos, targetPos)
+    local direction = (targetPos - muzzlePos).Unit * 500
+    local rayResult = workspace:Raycast(muzzlePos, direction, raycastParams)
+    local hitPos = rayResult and rayResult.Position or (muzzlePos + direction)
+    local hitInstance = rayResult and rayResult.Instance or nil
+    local part = Instance.new("Part")
+    part.Name = "RayPart"
+    part.BrickColor = BrickColor.Yellow()
+    part.Material = Enum.Material.Neon
+    part.Anchored = true
+    part.CanCollide = false
+    part.Transparency = 0.5
+    part.Size = Vector3.new(0.2, 0.2, (hitPos - muzzlePos).Magnitude)
+    part.CFrame = CFrame.new(muzzlePos, hitPos) * CFrame.new(0, 0, -(hitPos - muzzlePos).Magnitude / 2)
+    part.Parent = workspace
+    Debris:AddItem(part, 0.05)
+    if var12_upvw and var12_upvw:FindFirstChild("Handle") then
+        local flare = var12_upvw.Handle:FindFirstChild("Flare")
+        if flare then
+            flare.Enabled = true
+            task.spawn(function()
+                task.wait(0.05)
+                if flare then flare.Enabled = false end
+            end)
+        end
+    end
+    return hitInstance, hitPos
+end
+
+local function shootSilentAim(input)
+    if not GunRemotes or not var12_upvw or not var13_upvw then
+        return
+    end
+    
+    local isReloading = false
+    if var13_upvw.Local_ReloadSession and var13_upvw.Local_ReloadSession > 0 then
+        isReloading = true
+    end
+    if var12_upvw:GetAttribute("Local_ReloadSession") and var12_upvw:GetAttribute("Local_ReloadSession") > 0 then
+        isReloading = true
+    end
+    if GunFrame.GunNameLabel.Text == "RELOADING" then
+        isReloading = true
+    end
+    
+    local currentAmmo = var12_upvw:GetAttribute("Local_CurrentAmmo")
+    if currentAmmo == 0 then
+        return
+    end
+    
+    if isReloading or var12_upvw:GetAttribute("Local_IsShooting") or currentAmmo <= 0 then
+        return
+    end
+    
+    if not shouldHit() then
+        return
+    end
+    
+    var12_upvw:SetAttribute("Local_IsShooting", true)
+    playGunSounds()
+    
+    local targetPos, targetPart = getTargetPosition()
+    local hitData = {}
+    
+    if targetPos and targetPart and _G.SilentAimConfig.enabled then
+        local isShotgun = var12_upvw.Name:lower():find("shotgun") or var12_upvw.Name:lower():find("remington")
+        local pelletCount = isShotgun and 8 or 1
+        
+        for i = 1, pelletCount do
+            table.insert(hitData, {var12_upvw.Muzzle.Position, targetPos, targetPart})
+            createBullet(var12_upvw.Muzzle.Position, targetPos)
+        end
+    else
+        local inputPos
+        if input.UserInputType == Enum.UserInputType.Touch then
+            inputPos = Vector2.new(input.Position.X, input.Position.Y)
+        else
+            inputPos = input.Position or UserInputService:GetMouseLocation()
+        end
+        
+        local guiInset = GuiService:GetGuiInset()
+        local screenX = inputPos.X
+        local screenY = inputPos.Y - guiInset.Y
+        local ray = Camera:ViewportPointToRay(screenX, screenY)
+        local rayResult = workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
+        local hitPos = rayResult and rayResult.Position or (ray.Origin + ray.Direction * 500)
+        local hitInstance = rayResult and rayResult.Instance or nil
+        
+        local isShotgun = var12_upvw.Name:lower():find("shotgun") or var12_upvw.Name:lower():find("remington")
+        local pelletCount = isShotgun and 8 or 1
+        
+        for i = 1, pelletCount do
+            table.insert(hitData, {var12_upvw.Muzzle.Position, hitPos, hitInstance})
+            createBullet(var12_upvw.Muzzle.Position, hitPos)
+        end
+    end
+    
+    local success, errorMsg = pcall(function()
+        GunRemotes.ShootEvent:FireServer(hitData)
+    end)
+    
+    if not success then
+        var12_upvw:SetAttribute("Local_IsShooting", false)
+        return
+    end
+    
+    local newAmmo = currentAmmo - 1
+    var12_upvw:SetAttribute("Local_CurrentAmmo", newAmmo)
+    GunFrame.BulletsLabel.Text = tostring(newAmmo) .. "/" .. tostring(var13_upvw and var13_upvw.MaxAmmo or 0)
+    
+    local fireRate = var13_upvw and var13_upvw.FireRate or 0.1
+    task.spawn(function()
+        task.wait(fireRate)
+        if var12_upvw then
+            var12_upvw:SetAttribute("Local_IsShooting", false)
+        end
+    end)
+end
+
+local function shootAimlock(input)
+    if not GunRemotes or not var12_upvw or not var13_upvw then
+        return
+    end
+    
+    local isReloading = false
+    if var13_upvw.Local_ReloadSession and var13_upvw.Local_ReloadSession > 0 then
+        isReloading = true
+    end
+    if var12_upvw:GetAttribute("Local_ReloadSession") and var12_upvw:GetAttribute("Local_ReloadSession") > 0 then
+        isReloading = true
+    end
+    if GunFrame.GunNameLabel.Text == "RELOADING" then
+        isReloading = true
+    end
+    
+    local currentAmmo = var12_upvw:GetAttribute("Local_CurrentAmmo")
+    if currentAmmo == 0 then
+        return
+    end
+    
+    if isReloading or var12_upvw:GetAttribute("Local_IsShooting") or currentAmmo <= 0 then
+        return
+    end
+    
+    if not shouldHit() then
+        return
+    end
+    
+    var12_upvw:SetAttribute("Local_IsShooting", true)
+    playGunSounds()
+    
+    local targetPos, targetPart = getAimlockTargetPosition()
+    local hitData = {}
+    
+    if targetPos and targetPart and _G.AimlockConfig.enabled and lockedTarget then
+        local isShotgun = var12_upvw.Name:lower():find("shotgun") or var12_upvw.Name:lower():find("remington")
+        local pelletCount = isShotgun and 8 or 1
+        
+        for i = 1, pelletCount do
+            table.insert(hitData, {var12_upvw.Muzzle.Position, targetPos, targetPart})
+            createBullet(var12_upvw.Muzzle.Position, targetPos)
+        end
+    else
+        local inputPos
+        if input.UserInputType == Enum.UserInputType.Touch then
+            inputPos = Vector2.new(input.Position.X, input.Position.Y)
+        else
+            inputPos = input.Position or UserInputService:GetMouseLocation()
+        end
+        
+        local guiInset = GuiService:GetGuiInset()
+        local screenX = inputPos.X
+        local screenY = inputPos.Y - guiInset.Y
+        local ray = Camera:ViewportPointToRay(screenX, screenY)
+        local rayResult = workspace:Raycast(ray.Origin, ray.Direction * 500, raycastParams)
+        local hitPos = rayResult and rayResult.Position or (ray.Origin + ray.Direction * 500)
+        local hitInstance = rayResult and rayResult.Instance or nil
+        
+        local isShotgun = var12_upvw.Name:lower():find("shotgun") or var12_upvw.Name:lower():find("remington")
+        local pelletCount = isShotgun and 8 or 1
+        
+        for i = 1, pelletCount do
+            table.insert(hitData, {var12_upvw.Muzzle.Position, hitPos, hitInstance})
+            createBullet(var12_upvw.Muzzle.Position, hitPos)
+        end
+    end
+    
+    local success, errorMsg = pcall(function()
+        GunRemotes.ShootEvent:FireServer(hitData)
+    end)
+    
+    if not success then
+        var12_upvw:SetAttribute("Local_IsShooting", false)
+        return
+    end
+    
+    local newAmmo = currentAmmo - 1
+    var12_upvw:SetAttribute("Local_CurrentAmmo", newAmmo)
+    GunFrame.BulletsLabel.Text = tostring(newAmmo) .. "/" .. tostring(var13_upvw and var13_upvw.MaxAmmo or 0)
+    
+    local fireRate = var13_upvw and var13_upvw.FireRate or 0.1
+    task.spawn(function()
+        task.wait(fireRate)
+        if var12_upvw then
+            var12_upvw:SetAttribute("Local_IsShooting", false)
+        end
+    end)
+end
+
+local function createChamsFolder()
+    if chamsFolder then
+        chamsFolder:Destroy()
+    end
+    chamsFolder = Instance.new("Folder")
+    chamsFolder.Name = "AimlockChamsFolder"
+    chamsFolder.Parent = game.CoreGui
+end
+
+local function applyChams(character)
+    if not character or not _G.AimlockConfig.chamsEnabled then return end
+    if chamsFolder then
+        chamsFolder:ClearAllChildren()
+    else
+        createChamsFolder()
+    end
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ChamHighlight"
+            highlight.Adornee = part
+            highlight.FillColor = _G.AimlockConfig.chamsColor
+            highlight.OutlineColor = _G.AimlockConfig.chamsColor
+            highlight.FillTransparency = 0.5
+            highlight.OutlineTransparency = 1
+            highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            highlight.Parent = chamsFolder
+        end
+    end
+end
+
+local function removeChams()
+    if chamsFolder then
+        chamsFolder:ClearAllChildren()
+    end
+end
+
+local function toggleLock()
+    if lockedTarget then
+        lockedTarget = nil
+        removeChams()
+    else
+        local target = cachedClosestPlayerAimlock
+        if target then
+            lockedTarget = target
+        end
+    end
+end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AimlockGui"
+screenGui.ResetOnSpawn = false
+screenGui.Enabled = _G.AimlockConfig.showButton
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "DraggableFrame"
+mainFrame.Size = UDim2.new(0, 81, 0, 81)
+mainFrame.Position = UDim2.new(0.5, -40.5, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+mainFrame.BackgroundTransparency = 0.7
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 12)
+uiCorner.Parent = mainFrame
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 1, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "🔓"
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.TextSize = 32
+statusLabel.Font = Enum.Font.GothamBold
+statusLabel.Parent = mainFrame
+
+local dragging = false
+local dragInput
+local dragStart
+local startPos
+local clickStartTime = 0
+local clickStartPos = Vector2.new(0, 0)
+local isDragging = false
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        isDragging = false
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        clickStartTime = tick()
+        clickStartPos = input.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        if delta.Magnitude > 5 then
+            isDragging = true
+        end
+        mainFrame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+mainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local clickDuration = tick() - clickStartTime
+        local clickDistance = (input.Position - clickStartPos).Magnitude
+        if not isDragging and clickDuration < 0.3 and clickDistance < 10 then
+            toggleLock()
+            if lockedTarget then
+                mainFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                statusLabel.Text = "🔒"
+            else
+                mainFrame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                statusLabel.Text = "🔓"
+            end
+            task.wait(0.15)
+            if lockedTarget then
+                mainFrame.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+            else
+                mainFrame.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+            end
+        end
+        dragging = false
+        isDragging = false
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed or not var12_upvw then return end
+    
+    if input.KeyCode == Enum.KeyCode.Q then
+        toggleLock()
+    end
+    
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local isReloading = false
+        if var13_upvw and var13_upvw.Local_ReloadSession and var13_upvw.Local_ReloadSession > 0 then
+            isReloading = true
+        end
+        if var12_upvw:GetAttribute("Local_ReloadSession") and var12_upvw:GetAttribute("Local_ReloadSession") > 0 then
+            isReloading = true
+        end
+        if GunFrame.GunNameLabel.Text == "RELOADING" then
+            isReloading = true
+        end
+        
+        if isReloading then
+            return
+        end
+        
+        if _G.SilentAimConfig.enabled then
+            isHoldingFire = true
+            local fireRate = getAutomaticFireRate()
+            if fireRate then
+                task.spawn(function()
+                    while isHoldingFire and var12_upvw and getAutomaticFireRate() do
+                        if not var12_upvw or not var12_upvw.Parent then
+                            isHoldingFire = false
+                            break
+                        end
+                        if GunFrame.GunNameLabel.Text == "RELOADING" then
+                            isHoldingFire = false
+                            break
+                        end
+                        shootSilentAim(input)
+                        task.wait(fireRate)
+                    end
+                end)
+            else
+                shootSilentAim(input)
+            end
+        end
+        
+        if _G.AimlockConfig.enabled and lockedTarget then
+            isHoldingFireAimlock = true
+            local fireRate = getAutomaticFireRate()
+            if fireRate then
+                task.spawn(function()
+                    while isHoldingFireAimlock and var12_upvw and getAutomaticFireRate() and lockedTarget do
+                        if not var12_upvw or not var12_upvw.Parent then
+                            isHoldingFireAimlock = false
+                            break
+                        end
+                        if GunFrame.GunNameLabel.Text == "RELOADING" then
+                            isHoldingFireAimlock = false
+                            break
+                        end
+                        shootAimlock(input)
+                        task.wait(fireRate)
+                    end
+                end)
+            else
+                shootAimlock(input)
+            end
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isHoldingFire = false
+        isHoldingFireAimlock = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    FovCircle.Visible = _G.SilentAimConfig.showFov and _G.SilentAimConfig.enabled
+    FovCircle.Radius = _G.SilentAimConfig.fov
+    if _G.SilentAimConfig.followMouse then
+        local inputPos = getTouchPosition()
+        FovCircle.Position = Vector2.new(inputPos.X, inputPos.Y)
+    else
+        FovCircle.Position = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+    end
+    
+    if lockedTarget then
+        local character = lockedTarget.Character
+        if character then
+            local hrp = character:FindFirstChild("HumanoidRootPart")
+            local hum = character:FindFirstChild("Humanoid")
+            if hrp and hum and hum.Health > 0 then
+                if mainFrame.BackgroundColor3 ~= Color3.fromRGB(100, 200, 100) and 
+                   mainFrame.BackgroundColor3 ~= Color3.fromRGB(0, 255, 0) then
+                    mainFrame.BackgroundColor3 = Color3.fromRGB(100, 200, 100)
+                    statusLabel.Text = "🔒"
+                end
+                if _G.AimlockConfig.chamsEnabled then
+                    applyChams(character)
+                end
+                if tracerLine and _G.AimlockConfig.tracerEnabled then
+                    local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                    if onScreen then
+                        local vp = Camera.ViewportSize
+                        tracerLine.From = Vector2.new(vp.X / 2, vp.Y / 2)
+                        tracerLine.To = Vector2.new(pos.X, pos.Y)
+                        tracerLine.Color = _G.AimlockConfig.tracerColor
+                        tracerLine.Transparency = _G.AimlockConfig.tracerTransparency
+                        tracerLine.Visible = true
+                    else
+                        tracerLine.Visible = false
+                    end
+                else
+                    if tracerLine then
+                        tracerLine.Visible = false
+                    end
+                end
+            else
+                if tracerLine then
+                    tracerLine.Visible = false
+                end
+                removeChams()
+                lockedTarget = nil
+                mainFrame.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+                statusLabel.Text = "🔓"
+            end
+        else
+            if tracerLine then
+                tracerLine.Visible = false
+            end
+            removeChams()
+            lockedTarget = nil
+            mainFrame.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+            statusLabel.Text = "🔓"
+        end
+    else
+        if mainFrame.BackgroundColor3 ~= Color3.fromRGB(128, 128, 128) and 
+           mainFrame.BackgroundColor3 ~= Color3.fromRGB(255, 0, 0) then
+            mainFrame.BackgroundColor3 = Color3.fromRGB(128, 128, 128)
+            statusLabel.Text = "🔓"
+        end
+        if tracerLine then
+            tracerLine.Visible = false
+        end
+        removeChams()
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    character:WaitForChild("Humanoid")
+    updateWalkspeed()
+    updateJumpPower()
+    if _G.Settings.AutoGrabGuns then
+        task.wait(1)
+        autoGrabGuns()
+    end
+    if _G.Settings.EnableAutoFire then
+        task.wait(1)
+        updateAutoFire()
+    end
+end)
+
+LocalPlayer.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid", 3)
+    raycastParams.FilterDescendantsInstances = {character}
+    character.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and child:GetAttribute("ToolType") == "Gun" then
+            var12_upvw = child
+            var13_upvw = child:GetAttributes()
+            child:SetAttribute("Local_IsShooting", false)
+            GunFrame.GunNameLabel.Text = var13_upvw.Local_ReloadSession and var13_upvw.Local_ReloadSession > 0 and "RELOADING" or child.Name
+            GunFrame.BulletsLabel.Text = tostring(var13_upvw.CurrentAmmo or 0) .. "/" .. tostring(var13_upvw.MaxAmmo or 0)
+            GunFrame.Visible = true
+            MobileGunFrame.Visible = UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+            child:SetAttribute("Local_CurrentAmmo", var13_upvw.CurrentAmmo or 0)
+        end
+    end)
+    character.ChildRemoved:Connect(function(child)
+        if child:IsA("Tool") then
+            isHoldingFire = false
+            isHoldingFireAimlock = false
+            var12_upvw = nil
+            var13_upvw = nil
+            GunFrame.Visible = false
+            MobileGunFrame.Visible = false
+        end
+    end)
+end)
+
+local SilentAimGroupbox = Tabs.Target:AddLeftGroupbox("Silent Aim Settings")
+local SilentToggle = SilentAimGroupbox:AddToggle("SilentAim", {
+    Text = "Enable Silent Aim",
+    Default = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.enabled = Value
+    end
+})
+SilentToggle:AddColorPicker("SilentColor", {
+    Default = Color3.fromRGB(255, 255, 255),
+    Title = "Silent Aim Color",
+    Callback = function(Value)
+        FovCircle.Color = Value
+    end
+})
+SilentAimGroupbox:AddToggle("EnableFOV", {
+    Text = "Enable FOV",
+    Default = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.showFov = Value
+    end
+})
+SilentAimGroupbox:AddToggle("FOVFollowMouse", {
+    Text = "FOV Follow Mouse",
+    Default = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.followMouse = Value
+    end
+})
+SilentAimGroupbox:AddToggle("TeamCheck", {
+    Text = "Team Check",
+    Default = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.teamCheck = Value
+    end
+})
+SilentAimGroupbox:AddToggle("WallCheck", {
+    Text = "Wall Check",
+    Default = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.wallCheck = Value
+    end
+})
+SilentAimGroupbox:AddSlider("Hitchance", {
+    Text = "Hitchance",
+    Default = 100,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.hitChance = Value
+    end
+})
+SilentAimGroupbox:AddSlider("FovSize", {
+    Text = "FOV Size",
+    Default = 70,
+    Min = 10,
+    Max = 200,
+    Rounding = 0,
+    Compact = false,
+    Callback = function(Value)
+        _G.SilentAimConfig.fov = Value
+        FovCircle.Radius = Value
+    end
+})
+SilentAimGroupbox:AddDropdown("HitPart", {
+    Values = { "Head", "Torso", "UpperTorso", "HumanoidRootPart" },
+    Default = "Head",
+    Multi = false,
+    Text = "Hit Part",
+    Callback = function(Value)
+        _G.SilentAimConfig.targetPart = Value
+    end
+})
+
+local AimlockGroupbox = Tabs.Target:AddRightGroupbox("Aimlock Settings")
+local AimlockToggle = AimlockGroupbox:AddToggle("AimlockToggleMain", {
+    Text = "Enable Aimlock",
+    Default = false,
+    Callback = function(Value)
+        _G.AimlockConfig.enabled = Value
+        if not Value then
+            lockedTarget = nil
+            removeChams()
+        end
+    end
+})
+local Keybind = AimlockToggle:AddKeyPicker("AimlockKeybindMain", {
+    Default = "Q",
+    Text = "Aimlock Key",
+    Mode = "Toggle",
+    Callback = function(Value)
+        if _G.AimlockConfig.enabled then
+            toggleLock()
+        end
+    end,
+})
+AimlockGroupbox:AddToggle("ShowButtonAimlock", {
+    Text = "Show Lock Button",
+    Default = false,
+    Callback = function(Value)
+        _G.AimlockConfig.showButton = Value
+        screenGui.Enabled = Value
+    end
+})
+AimlockGroupbox:AddDropdown("AimlockHitPartMain", {
+    Values = { "Head", "Torso", "UpperTorso", "HumanoidRootPart" },
+    Default = "Head",
+    Multi = false,
+    Text = "Target Part",
+    Callback = function(Value)
+        _G.AimlockConfig.targetPart = Value
+    end
+})
+AimlockGroupbox:AddToggle("AimlockTeamCheckMain", {
+    Text = "Team Check",
+    Default = false,
+    Callback = function(Value)
+        _G.AimlockConfig.teamCheck = Value
+    end
+})
+AimlockGroupbox:AddToggle("AimlockWallCheckMain", {
+    Text = "Wall Check",
+    Default = false,
+    Callback = function(Value)
+        _G.AimlockConfig.wallCheck = Value
+    end
+})
+AimlockGroupbox:AddSlider("AimlockHitChanceMain", {
+    Text = "Hit Chance %",
+    Default = 100,
+    Min = 0,
+    Max = 100,
+    Rounding = 0,
+    Callback = function(Value)
+        _G.AimlockConfig.hitChance = Value
+    end
+})
+local ChamsToggle = AimlockGroupbox:AddToggle("ChamsToggleAimlock", {
+    Text = "Show Chams",
+    Default = false,
+    Callback = function(Value)
+        _G.AimlockConfig.chamsEnabled = Value
+        if not Value then
+            removeChams()
+        end
+    end
+})
+ChamsToggle:AddColorPicker("ChamsColorAimlock", {
+    Default = Color3.fromRGB(255, 255, 255),
+    Title = "Chams Color",
+    Callback = function(Value)
+        _G.AimlockConfig.chamsColor = Value
+    end,
+})
+local TracerToggle = AimlockGroupbox:AddToggle("TracerToggleAimlock", {
+    Text = "Show Tracer",
+    Default = false,
+    Callback = function(Value)
+        _G.AimlockConfig.tracerEnabled = Value
+    end
+})
+TracerToggle:AddColorPicker("TracerColorAimlock", {
+    Default = Color3.fromRGB(255, 255, 255),
+    Title = "Tracer Color",
+    Callback = function(Value)
+        _G.AimlockConfig.tracerColor = Value
+    end,
+})
+
+local CriminalGroupbox = Tabs.Target:AddLeftGroupbox("Criminal")
+local MyToggle = CriminalGroupbox:AddToggle("MyToggle", {
+    Text = "Auto Criminal",
+    Default = false,
+})
+MyToggle:OnChanged(function(value)
+    if value then
+        task.defer(function()
+            local Players = game:GetService("Players")
+            local player = Players.LocalPlayer
+            local character = player.Character or player.CharacterAdded:Wait()
+            local humanoid = character:WaitForChild("Humanoid")
+            local root = character:WaitForChild("HumanoidRootPart")
+            local target = workspace:WaitForChild("SideRoad")
+            local function tpTo(part)
+                if not part or not part:IsA("BasePart") then
+                    warn("Invalid target part!")
+                    return
+                end
+                humanoid.PlatformStand = true
+                character:PivotTo(part.CFrame + Vector3.new(0, 3, 0))
+                task.wait(3)
+                humanoid.PlatformStand = false
+            end
+            tpTo(target)
+        end)
+    end
+end)
+
+local PickupGunsGroupbox = Tabs.Guns:AddLeftGroupbox("Pick-Up Guns")
+PickupGunsGroupbox:AddDropdown("SelectedGun", {
+    Values = {"Remington 870", "AK-47", "M9", "M4A1 (Own Riot Gamepass)"},
+    Default = "Remington 870",
+    Multi = false,
+    Text = "Gun Selector",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.SelectedGun = Value
+        end)
+    end,
+})
+PickupGunsGroupbox:AddToggle("AutoGrabGuns", {
+    Text = "Auto Grab Guns",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.AutoGrabGuns = Value
+            if Value then
+                autoGrabGuns()
+            end
+        end)
+    end,
+})
+PickupGunsGroupbox:AddButton("Pick-Up Guns", function()
+    pickupGun()
+end)
+
+local AutoReloadGroupbox = Tabs.Guns:AddLeftGroupbox("Auto Reload Guns")
+AutoReloadGroupbox:AddToggle("EnableAutoReload", {
+    Text = "Enable Auto Reload Guns",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableAutoReload = Value
+            toggleAutoReload(Value)
+        end)
+    end,
+})
+
+local ReloadCooldownGroupbox = Tabs.Guns:AddLeftGroupbox("Reload Cooldown")
+ReloadCooldownGroupbox:AddToggle("EnableReloadCooldown", {
+    Text = "Enable Reload Cooldown",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableReloadCooldown = Value
+            toggleReloadCooldown(Value)
+        end)
+    end,
+})
+ReloadCooldownGroupbox:AddSlider("ReloadCooldownValue", {
+    Text = "Customization",
+    Default = 2,
+    Min = 0.001,
+    Max = 2,
+    Rounding = 3,
+    Suffix = "s",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.ReloadCooldownValue = Value
+            if _G.Settings.EnableReloadCooldown then
+                updateReloadCooldown()
+            end
+        end)
+    end,
+})
+
+local FireRateGroupbox = Tabs.Guns:AddLeftGroupbox("Fire-Rate Adjuster")
+FireRateGroupbox:AddToggle("EnableFireRateAdjuster", {
+    Text = "Enable Fire-Rate Adjuster",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableFireRateAdjuster = Value
+            toggleFireRateAdjuster(Value)
+        end)
+    end,
+})
+FireRateGroupbox:AddSlider("FireRateValue", {
+    Text = "Customization",
+    Default = 0.8,
+    Min = 0.001,
+    Max = 0.8,
+    Rounding = 3,
+    Suffix = "s",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.FireRateValue = Value
+            if _G.Settings.EnableFireRateAdjuster then
+                updateFireRate()
+            end
+        end)
+    end,
+})
+
+local AutoFireGroupbox = Tabs.Guns:AddLeftGroupbox("Auto Fire")
+AutoFireGroupbox:AddToggle("EnableAutoFire", {
+    Text = "Enable Auto Fire",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableAutoFire = Value
+            toggleAutoFire(Value)
+        end)
+    end,
+})
+
+local GunColorGroupbox = Tabs.Guns:AddRightGroupbox("Gun Color Changer")
+local ColorToggle = GunColorGroupbox:AddToggle("EnableColorChanger", {
+    Text = "Enable Color Changer",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableColorChanger = Value
+            toggleColorChanger(Value)
+        end)
+    end,
+})
+local ColorPicker = ColorToggle:AddColorPicker("GunColor", {
+    Default = Color3.fromRGB(255, 255, 255),
+    Title = "Gun Color",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.GunColor = Value
+            if _G.Settings.EnableColorChanger then
+                updateGunColors()
+            end
+        end)
+    end,
+})
+
+local TeleportationGroupbox = Tabs.Teleportation:AddLeftGroupbox("Customization")
+TeleportationGroupbox:AddDropdown("TeleportDestination", {
+    Values = {"Armory", "Inside Prison", "Secret Room", "Prison Yard", "Criminal Base", "Prison Car Spawner", "Prison Kitchen"},
+    Default = "Armory",
+    Multi = false,
+    Text = "Destination Selector",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.TeleportDestination = Value
+        end)
+    end,
+})
+TeleportationGroupbox:AddButton("Teleport To Destination", function()
+    teleportToDestination()
+end)
+
+local TeleportToPlayerGroupbox = Tabs.Teleportation:AddRightGroupbox("Teleport To Any Player")
+local initialPlayerList = getPlayerList()
+TeleportToPlayerGroupbox:AddDropdown("PlayerList", {
+    Values = initialPlayerList,
+    Default = initialPlayerList[1] or "No players available",
+    Multi = false,
+    Text = "Player List",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.SelectedPlayer = Value
+        end)
+    end,
+})
+TeleportToPlayerGroupbox:AddButton("Teleport To Player", function()
+    teleportToPlayer()
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    task.wait(0.5)
+    updatePlayerListDropdown()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    task.wait(0.1)
+    updatePlayerListDropdown()
+end)
+
+task.spawn(function()
+    task.wait(1)
+    updatePlayerListDropdown()
+end)
+
+local InfiniteJumpGroupbox = Tabs.LocalPlayer:AddLeftGroupbox("Infinite Jump")
+local WalkSpeedGroupbox = Tabs.LocalPlayer:AddLeftGroupbox("Walk Speed")
+local JumpPowerGroupbox = Tabs.LocalPlayer:AddLeftGroupbox("Jump Power")
+local NoclipGroupbox = Tabs.LocalPlayer:AddLeftGroupbox("Noclip")
+local InfiniteZoomGroupbox = Tabs.LocalPlayer:AddRightGroupbox("Infinite Zoom")
+local FOVChangerGroupbox = Tabs.LocalPlayer:AddRightGroupbox("FOV Changer")
+
+InfiniteJumpGroupbox:AddToggle("EnableInfiniteJump", {
+    Text = "Enable Infinite Jump",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableInfiniteJump = Value
+            toggleInfiniteJump(Value)
+        end)
+    end,
+})
+
+WalkSpeedGroupbox:AddToggle("EnableWalkspeed", {
+    Text = "Enable Walkspeed",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableWalkspeed = Value
+            updateWalkspeed()
+        end)
+    end,
+})
+
+WalkSpeedGroupbox:AddSlider("WalkspeedValue", {
+    Text = "Walkspeed",
+    Default = 16,
+    Min = 1,
+    Max = 1000,
+    Rounding = 1,
+    Suffix = "",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.WalkspeedValue = Value
+            if _G.Settings.EnableWalkspeed then
+                updateWalkspeed()
+            end
+        end)
+    end,
+})
+
+JumpPowerGroupbox:AddToggle("EnableJumpPower", {
+    Text = "Enable Jump Power",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableJumpPower = Value
+            updateJumpPower()
+        end)
+    end,
+})
+
+JumpPowerGroupbox:AddSlider("JumpPowerValue", {
+    Text = "Jump Power",
+    Default = 50,
+    Min = 1,
+    Max = 1000,
+    Rounding = 1,
+    Suffix = "",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.JumpPowerValue = Value
+            if _G.Settings.EnableJumpPower then
+                updateJumpPower()
+            end
+        end)
+    end,
+})
+
+NoclipGroupbox:AddToggle("EnableNoclip", {
+    Text = "Enable Noclip",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableNoclip = Value
+            toggleNoclip(Value)
+        end)
+    end,
+})
+
+InfiniteZoomGroupbox:AddToggle("EnableInfiniteZoom", {
+    Text = "Enable Infinite Zoom",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableInfiniteZoom = Value
+            toggleInfiniteZoom(Value)
+        end)
+    end,
+})
+
+FOVChangerGroupbox:AddToggle("EnableFOVChanger", {
+    Text = "Enable FOV Changer",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableFOVChanger = Value
+            toggleFOVChanger(Value)
+        end)
+    end,
+})
+
+FOVChangerGroupbox:AddSlider("FOVValue", {
+    Text = "Customization",
+    Default = 70,
+    Min = 70,
+    Max = 120,
+    Rounding = 1,
+    Suffix = "",
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.FOVValue = Value
+            if _G.Settings.EnableFOVChanger then
+                updateFOV()
+            end
+        end)
+    end,
+})
+
+local ESPGroupbox = Tabs.ESP:AddLeftGroupbox("ESP Settings")
+ESPGroupbox:AddToggle("EnableESP", {
+    Text = "Enable ESP",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.EnableESP = Value
+            toggleESP(Value)
+        end)
+    end,
+})
+ESPGroupbox:AddToggle("ESPTeamCheck", {
+    Text = "Team Check",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.ESPTeamCheck = Value
+            toggleESP(_G.Settings.EnableESP)
+        end)
+    end,
+})
+ESPGroupbox:AddToggle("ShowESPBoxes", {
+    Text = "Show ESP Boxes",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.ShowESPBoxes = Value
+        end)
+    end,
+})
+ESPGroupbox:AddToggle("ShowHealthBars", {
+    Text = "Show Health Bars",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.ShowHealthBars = Value
+        end)
+    end,
+})
+ESPGroupbox:AddToggle("ShowDistance", {
+    Text = "Show Distance",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.ShowDistance = Value
+        end)
+    end,
+})
+ESPGroupbox:AddToggle("ShowNames", {
+    Text = "Show Names",
+    Default = false,
+    Callback = function(Value)
+        task.defer(function()
+            _G.Settings.ShowNames = Value
+        end)
+    end,
+})
+
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({"MenuKeybind"})
+SaveManager:SetFolder("MyScriptHub/specific-game")
+SaveManager:SetSubFolder("Lobby")
+SaveManager:BuildConfigSection(Tabs["UI Settings"])
+SaveManager:LoadAutoloadConfig()
